@@ -1,7 +1,7 @@
 ''' utils for json-rpc2 '''
 import json
 import inspect
-from .types import JSON, Mapping, Optional
+from .typedef import JSON, Mapping, Optional
 
 
 def is_json_invalid(json_str: str) -> bool:

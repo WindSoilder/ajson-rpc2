@@ -1,21 +1,21 @@
 ''' json-rpc2 implementation base on asyncio '''
 import json
 import logging
-import signal
+
 from asyncio import BaseEventLoop, get_event_loop, start_server
 
-from utils import (
+from .utils import (
     is_json_invalid, is_method_not_exist,
     is_request_invalid, is_params_invalid
 )
-from errors import (
+from .errors import (
     ParseError, InvalidRequestError,
     MethodNotFoundError, InvalidParamsError,
     InternalError, JsonRPC2Error
 )
-from request import Request, Notification
-from response import SuccessResponse, ErrorResponse
-from types import Union, Optional
+from .request import Request, Notification
+from .response import SuccessResponse, ErrorResponse
+from .typedef import Union, Optional
 
 
 class JsonRPC2:
@@ -129,20 +129,3 @@ class JsonRPC2:
         if is_params_invalid(method, request_json['params']):
             return InvalidParamsError(message="Invalid params")
         return None
-
-
-def sub(num1: int, num2: int) -> int:
-    return num1 - num2
-
-
-loop: BaseEventLoop = get_event_loop()
-json_rpc2 = JsonRPC2(loop)
-json_rpc2.add_method(sub)
-f = start_server(json_rpc2.handle_client,
-                 port=9999, loop=loop)
-server = loop.run_until_complete(f)
-loop.add_signal_handler(signal.SIGINT, loop.stop)
-try:
-    loop.run_forever()
-finally:
-    loop.close()

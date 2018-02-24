@@ -1,5 +1,5 @@
 ''' request module for json-rpc2, which contains Request(need server response) and Notification(doesn't need server response) '''
-from .types import List, Mapping, Union
+from .typedef import List, Mapping, Union
 
 
 class _BaseRequest:
