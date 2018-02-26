@@ -1,4 +1,4 @@
-''' response module for json-rpc2 
+''' response module for json-rpc2
 When a rpc call is made, the Server MUST reply with a Response, except for in the case of Notifications.
 The Response is expressed as a single JSON Object, with the following members:
 
