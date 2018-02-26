@@ -1,7 +1,7 @@
 ''' utils for json-rpc2 '''
 import json
 import inspect
-from .typedef import JSON, Mapping, Optional
+from .typedef import JSON, Mapping, Union
 
 
 def is_json_invalid(json_str: str) -> bool:
@@ -27,10 +27,10 @@ def is_request_invalid(json: JSON) -> bool:
 
 
 def is_method_not_exist(method: str, rpc_methods: Mapping) -> bool:
-    ''' return true if the method is not exist '''
+    ''' return true if the method is not been registered '''
     return method not in rpc_methods
 
 
-def is_params_invalid(method, params: Optional[dict, list]) -> bool:
+def is_params_invalid(method, params: Union[dict, list, None]) -> bool:
     ''' return true if arguments if not valid for method '''
     return False

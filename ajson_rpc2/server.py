@@ -85,7 +85,7 @@ class JsonRPC2:
         if isinstance(request.params, dict):
             result = await method(**request.params)
         elif isinstance(request.params, list):
-            result = await method(*request.params)
+            result = method(*request.params)
         else:
             # the method have no parameter
             result = await method()
@@ -119,13 +119,13 @@ class JsonRPC2:
         ''' check if there are any errors in the raw of request,
         if so, return an error object, else return None '''
         if is_json_invalid(request_raw):
-            return ParseError(message="Parse Error")
+            return ParseError("Parse Error")
         request_json = json.loads(request_raw)
         if is_request_invalid(request_json):
-            return InvalidRequestError(message="Invalid Request")
+            return InvalidRequestError("Invalid Request")
         if is_method_not_exist(request_json['method'], self.methods):
-            return MethodNotFoundError(message="Method not found")
+            return MethodNotFoundError("Method not found")
         method = self.get_method(request_json['method'])
         if is_params_invalid(method, request_json['params']):
-            return InvalidParamsError(message="Invalid params")
+            return InvalidParamsError("Invalid params")
         return None
