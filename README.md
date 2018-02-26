@@ -1,8 +1,10 @@
 # ajson-rpc2
-An implementation of json rpc 2.0[(http://www.jsonrpc.org/)] which is based on python3 asyncio module,
+An implementation of json rpc 2.0[http://www.jsonrpc.org/] which is based on python3 asyncio module,
 which is designed for async and extensible for json-rpc based protocol (like language server protocol)
 
 # Usage
+It's easy to use :)
+
     from ajson_rpc2 import ajson_rpc2
 
     # make one function to be rpc called
