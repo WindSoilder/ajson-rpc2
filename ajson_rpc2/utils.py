@@ -33,4 +33,23 @@ def is_method_not_exist(method: str, rpc_methods: Mapping) -> bool:
 
 def is_params_invalid(method, params: Union[dict, list, None]) -> bool:
     ''' return true if arguments if not valid for method '''
-    return False
+    method_args = inspect.getfullargspec(method)
+    if isinstance(params, list):
+        if len(params) <= len(method_args.args) or \
+           len(params) >= len(method_args.args) - len(method_args.defaults):
+            return False
+        return True
+    elif isinstance(params, dict):
+        cant_omit_args = method_args.args[0:len(method_args) - len(method_args.defaults)]
+        for arg in cant_omit_args:
+            if arg not in params:
+                # have not provide required parameter
+                return True
+        for param in params:
+            if param not in method_args.args:
+                # the given parameter contains somthing that the function doesn't know
+                return True
+        return False
+    else:
+        return len(method_args) == 0 or \
+               len(method_args) - len(method_args.defaults) == 0

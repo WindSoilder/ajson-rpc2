@@ -44,7 +44,9 @@ class JsonRPC2:
 
     async def handle_rpc_call(self, reader, writer):
         while True:
+            peer = writer.get_extra_info('socket').getpeername()
             request_raw = await self.read(reader)
+            logging.info(f"get data from {peer}")
             if not request_raw:
                 break   # Client close connection, Clean close
             request_raw = request_raw.decode()
@@ -66,15 +68,18 @@ class JsonRPC2:
                                            request_json['params'])
 
                 try:
+                    logging.info(f"from {peer}: route to method success, going to invoke it")
                     result = await self.invoke_method(request)
                 except Exception as e:
                     # there is an error during the method executing procedure
                     # defined by json rpc2, we need to expose it as InternalError
+                    logging.error(f"from {peer}: invoke method {request.method} failure")
                     exc = InternalError(e.args)
                     response = ErrorResponse(exc, request.req_id)
                     if isinstance(request, Request):
                         self.send_response(writer, response)
                 else:
+                    logging.info(f"from {peer}: invoke method {request.method} success")
                     response = SuccessResponse(result, request.req_id)
                     if isinstance(request, Request):
                         self.send_response(writer, response)
@@ -127,9 +132,11 @@ class JsonRPC2:
     def get_request_id(self, request_raw: str) -> Optional[int]:
         ''' try to parse the raw input, and return request id,
         if it's not existed, return None '''
-        search_result = re.search(r'"id"\s*:\s*(\d)+\s*', request_raw)
+        search_result = re.search(r'"id"\s*:\s*"{0,1}(\d)+"{0,1}\s*', request_raw)
+        id_group_index = 1
+
         if search_result:
-            return search_result.group(1)
+            return search_result.group(id_group_index)
         return None
 
     def check_errors(self, request_raw: str) -> Optional[JsonRPC2Error]:

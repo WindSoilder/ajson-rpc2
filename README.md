@@ -34,7 +34,7 @@ It's easy to use :)
 
 When we run the server successfully, we can use *telnet* to test it:
 
-    telnet localhost 9999
+    $ telnet localhost 9999
     {"jsonrpc": "2.0", "method": "subtract", "params": [42, 23], "id": 1}
 
     # should return
@@ -45,4 +45,4 @@ When we run the server successfully, we can use *telnet* to test it:
 2. Extensible for json-rpc based protocol (like language server protocol)
 
 # Support version
-The ajson-rpc2 is only support for python3.6+
+The *ajson-rpc2* is only support for **python3.6+**
