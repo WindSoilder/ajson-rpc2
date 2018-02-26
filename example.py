@@ -1,11 +1,13 @@
 import json
 from asyncio import BaseEventLoop, get_event_loop, start_server
+import asyncio
 from ajson_rpc2.server import JsonRPC2
 import signal
 import logging
 
 
-def subtract(num1: int, num2: int) -> int:
+async def subtract(num1: int, num2: int) -> int:
+    await asyncio.sleep(2)
     return num1 - num2
 
 
@@ -20,4 +22,3 @@ try:
     loop.run_forever()
 finally:
     loop.close()
-

@@ -2,8 +2,6 @@
 import json
 import logging
 
-from asyncio import BaseEventLoop, get_event_loop, start_server
-
 from .utils import (
     is_json_invalid, is_method_not_exist,
     is_request_invalid, is_params_invalid
@@ -64,6 +62,8 @@ class JsonRPC2:
                 except InternalError as e:
                     # there is an error during the method executing procedure
                     response = ErrorResponse(e, request.id)
+                except Exception as e:
+                    response = ErrorResponse(e, request.id)
                 else:
                     response = SuccessResponse(result, request.id)
                 finally:
@@ -85,7 +85,7 @@ class JsonRPC2:
         if isinstance(request.params, dict):
             result = await method(**request.params)
         elif isinstance(request.params, list):
-            result = method(*request.params)
+            result = await method(*request.params)
         else:
             # the method have no parameter
             result = await method()
