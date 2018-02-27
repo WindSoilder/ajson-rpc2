@@ -36,3 +36,4 @@ When we run the server successfully, we can use *telnet* to test it:
 
 # Support version
 The *ajson-rpc2* is only support for **python3.6+**
+
