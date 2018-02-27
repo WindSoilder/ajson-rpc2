@@ -35,4 +35,4 @@ When we run the server successfully, we can use *telnet* to test it:
 2. Extensible for json-rpc based protocol (like language server protocol)
 
 # Support version
-The *ajson-rpc2* is only support for **python3.3+**
+The *ajson-rpc2* is only support for **python3.6+**

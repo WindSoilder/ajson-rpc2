@@ -114,7 +114,13 @@ class JsonRPC2:
         return self.methods[method_name]
 
     def add_method(self, method, restrict=True):
-        ''' add method to json rpc, to make it rpc callable '''
+        ''' add method to json rpc, to make it rpc callable
+        args:
+            - method: which method to be rpc callable
+            - restrict: controls the behavior when try to add method which have already
+                        been added, if restrict is True, an exception will be raise when
+                        user try to add an exist method.  Otherwise the method will be
+                        overrided'''
         if restrict and method.__name__ in self.methods:
             raise ValueError("The method is existed")
         else:
