@@ -1,16 +1,6 @@
 # ajson-rpc2
 An implementation of [json rpc 2.0](http://www.jsonrpc.org/) which is based on python3 asyncio module, it's designed for *async* and *extensible* for json-rpc based protocol (like language server protocol, or HTTP based json rpc 2.0).  And the json-rpc protocol is based on *TCP*.
 
-# Install
-You can use pip to install it (which is prefered way).
-
-    pip install ajson-rpc2
-
-or using setup.py
-
-    python setup.py install
-
-
 # Usage
 It's easy to use :)
 ```python

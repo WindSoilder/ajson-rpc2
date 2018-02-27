@@ -8,7 +8,7 @@ def is_json_invalid(json_str: str) -> bool:
     ''' return true if input is invalid JSON object '''
     try:
         json.loads(json_str)
-    except json.decoder.JSONDecodeError as e:
+    except (json.decoder.JSONDecodeError, TypeError) as e:
         return True
     return False
 
@@ -35,12 +35,18 @@ def is_params_invalid(method, params: Union[dict, list, None]) -> bool:
     ''' return true if arguments if not valid for method '''
     method_args = inspect.getfullargspec(method)
     if isinstance(params, list):
-        if len(params) <= len(method_args.args) or \
-           len(params) >= len(method_args.args) - len(method_args.defaults):
-            return False
-        return True
+        if method_args.defaults is None:
+            return len(params) != len(method_args.args)
+        else:
+            if len(params) <= len(method_args.args) and \
+               len(params) >= len(method_args.args) - len(method_args.defaults):
+                return False
+            return True
     elif isinstance(params, dict):
-        cant_omit_args = method_args.args[0:len(method_args) - len(method_args.defaults)]
+        if method_args.defaults is None:
+            cant_omit_args = method_args.args
+        else:
+            cant_omit_args = method_args.args[0:len(method_args.args) - len(method_args.defaults)]
         for arg in cant_omit_args:
             if arg not in params:
                 # have not provide required parameter
@@ -51,5 +57,7 @@ def is_params_invalid(method, params: Union[dict, list, None]) -> bool:
                 return True
         return False
     else:
+        # don't provide any parameter, so check if the method
+        # don't need any parameters
         return len(method_args) == 0 or \
                len(method_args) - len(method_args.defaults) == 0
