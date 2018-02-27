@@ -85,7 +85,8 @@ class JsonRPC2:
                         self.send_response(writer, response)
 
     async def read(self, reader) -> bytes:
-        ''' read a request from client '''
+        ''' read a request from client
+        it's needed to return the content of json body'''
         return await reader.readline()
 
     async def invoke_method(self, request: Union[Request, Notification]) -> Any:

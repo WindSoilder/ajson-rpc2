@@ -1,5 +1,5 @@
 # ajson-rpc2
-An implementation of [json rpc 2.0](http://www.jsonrpc.org/) which is based on python3 asyncio module, it's designed for *async* and *extensible* for json-rpc based protocol (like language server protocol).  And the json-rpc protocol is based on *TCP*.
+An implementation of [json rpc 2.0](http://www.jsonrpc.org/) which is based on python3 asyncio module, it's designed for *async* and *extensible* for json-rpc based protocol (like language server protocol, or HTTP based json rpc 2.0).  And the json-rpc protocol is based on *TCP*.
 
 # Install
 You can use pip to install it (which is prefered way).
@@ -45,4 +45,4 @@ When we run the server successfully, we can use *telnet* to test it:
 2. Extensible for json-rpc based protocol (like language server protocol)
 
 # Support version
-The *ajson-rpc2* is only support for **python3.6+**
+The *ajson-rpc2* is only support for **python3.5+**
