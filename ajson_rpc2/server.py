@@ -22,6 +22,28 @@ from .typedef import Union, Optional, Any
 class JsonRPC2:
     '''
     Implementation of json-rpc2 protocol class
+    Usage example::
+
+        from ajson_rpc2 import JsonRPC2
+
+        server = JsonRPC2()
+
+        # make one function to be rpc called
+        @server.rpc_call
+        def substract(num1, num2):
+            return num1 - num2
+
+        # also support for the async rpc call
+        @server.rpc_call
+        async def io_bound_call(num1):
+            await asyncio.sleep(3)
+            return num1
+
+        server.start(port=9999)
+
+    :param loop: an instance of asyncio event loop, if the loop is None, the JsonRPC2 will
+                 use default loop provided by asyncio, we can provide more powerful event
+                 loop to the JsonRPC2 (like uvloop)
     '''
     def __init__(self, loop=None):
         self.methods = {}
@@ -115,12 +137,13 @@ class JsonRPC2:
 
     def add_method(self, method, restrict=True):
         ''' add method to json rpc, to make it rpc callable
-        args:
-            - method: which method to be rpc callable
-            - restrict: controls the behavior when try to add method which have already
-                        been added, if restrict is True, an exception will be raise when
-                        user try to add an exist method.  Otherwise the method will be
-                        overrided'''
+
+        :param method: which method to be rpc callable
+        :param restrict: controls the behavior when try to add method which have already
+                         been added, if restrict is True, an exception will be raise when
+                         user try to add an exist method.  Otherwise the method will be
+                         overrided
+        '''
         if restrict and method.__name__ in self.methods:
             raise ValueError("The method is existed")
         else:
