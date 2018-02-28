@@ -1,4 +1,0 @@
-{
-  "tests/test_utils.py::test_rpc_call": true,
-  "tests/test_utils.py::test_simple_rpc_call": true
-}
