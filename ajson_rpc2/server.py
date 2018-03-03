@@ -92,6 +92,7 @@ class JsonRPC2:
     async def handle_simple_rpc_call(self, writer, request_json: JSON):
         error = self.check_errors(request_json)
         peer = writer.get_extra_info('socket').getpeername()
+
         if error:
             request_id = self.get_request_id(request_json, error)
             response = ErrorResponse(error, request_id)
@@ -152,7 +153,7 @@ class JsonRPC2:
         ''' get and return rpc method,
         if the method is not existed, a ValueError will occured'''
         try:
-            self.methods[method_name]
+            return self.methods[method_name]
         except KeyError as e:
             raise ValueError(f'The method "{method_name}" is not registered in the Server')
 
@@ -197,6 +198,7 @@ class JsonRPC2:
         if is_method_not_exist(request_json['method'], self.methods):
             return MethodNotFoundError("Method not found")
         method = self.get_method(request_json['method'])
+
         if is_params_invalid(method, request_json['params']):
             return InvalidParamsError("Invalid params")
         return None
@@ -239,10 +241,10 @@ class JsonRPC2:
         }
         response_body["jsonrpc"] = response.JSONRPC
         response_body["id"] = response.resp_id
-        writer.write(json.dumps(response_body).encode())
+        writer.write(json.dumps(response_body).encode() + b'\n')
 
     def _send_response(self, writer, response: SuccessResponse):
         response_body = response.__dict__
         response_body["jsonrpc"] = response.JSONRPC
         response_body["id"] = response.resp_id
-        writer.write(json.dumps(response_body).encode())
+        writer.write(json.dumps(response_body).encode() + b'\n')
