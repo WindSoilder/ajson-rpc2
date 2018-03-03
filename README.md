@@ -41,5 +41,16 @@ When we run the server successfully, we can use *telnet* to test it:
 1. Easy to use, support both async call and sync call
 2. Extensible for json-rpc based protocol (like language server protocol)
 
+# Limited
+For now the client can only send one-line request to the server, like this:
+
+    {"jsonrpc": "2.0", "method": "subtract", "params": [42, 23], "id": 1}
+
+or like this in batched requests:
+
+    [ {"jsonrpc": "2.0", "method": "subtract", "params": [42, 23], "id": 1}, {"jsonrpc": "2.0", "method": "subtract", "params": [42, 23], "id": 2} ]
+
+Which is client un friendly, and it will be resolved in the future version.
+
 # Support version
 The *ajson-rpc2* is only support for **python3.6+**

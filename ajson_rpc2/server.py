@@ -9,14 +9,15 @@ from .utils import (
     is_json_invalid, is_method_not_exist,
     is_request_invalid, is_params_invalid
 )
-from .errors import (
+
+from .models.errors import (
     ParseError, InvalidRequestError,
     MethodNotFoundError, InvalidParamsError,
     InternalError, JsonRPC2Error
 )
-from .request import Request, Notification
-from .response import SuccessResponse, ErrorResponse
-from .typedef import Union, Optional, Any
+from .models.request import Request, Notification
+from .models.response import SuccessResponse, ErrorResponse
+from .typedef import Union, Optional, Any, JSON
 
 
 class JsonRPC2:
@@ -72,39 +73,55 @@ class JsonRPC2:
             if not request_raw:
                 break   # Client close connection, Clean close
             request_raw = request_raw.decode()
-            error = self.check_errors(request_raw)
-            if error:
-                request_id = self.get_request_id(request_raw)
-                if request_id:
-                    response = ErrorResponse(error, request_id)
+
+            # check for invalid json first
+            request_json = None
+            try:
+                request_json = json.loads(request_raw)
+            except (json.JSONDecodeError, TypeError) as e:
+                response = ErrorResponse(ParseError("Parse Error"),
+                                         None)
+                self.send_response(writer,
+                                   response)
+            else:
+                if isinstance(request_json, list):
+                    await self.handle_batched_rpc_call(writer, request_json)
+                else:
+                    await self.handle_simple_rpc_call(writer, request_json)
+
+    async def handle_simple_rpc_call(self, writer, request_json: JSON):
+        error = self.check_errors(request_json)
+        peer = writer.get_extra_info('socket').getpeername()
+        if error:
+            request_id = self.get_request_id(request_json, error)
+            response = ErrorResponse(error, request_id)
+            self.send_response(writer, response)
+        else:
+            response = None
+            if 'id' in request_json:
+                request = Request.from_dict(request_json)
+            else:
+                request = Notification.from_dict(request_json)
+
+            try:
+                logging.info(f"from {peer}: route to method success, going to invoke it")
+                result = await self.invoke_method(request)
+            except Exception as e:
+                # there is an error during the method executing procedure
+                # defined by json rpc2, we need to expose it as InternalError
+                logging.error(f"from {peer}: invoke method {request.method} failure")
+                exc = InternalError(e.args)
+                response = ErrorResponse(exc, request.req_id)
+                if isinstance(request, Request):
                     self.send_response(writer, response)
             else:
-                response = None
-                request_json = json.loads(request_raw)
-                if 'id' in request_json:
-                    request = Request(request_json['method'],
-                                      request_json['params'],
-                                      request_json['id'])
-                else:
-                    request = Notification(request_json['method'],
-                                           request_json['params'])
+                logging.info(f"from {peer}: invoke method {request.method} success")
+                response = SuccessResponse(result, request.req_id)
+                if isinstance(request, Request):
+                    self.send_response(writer, response)
 
-                try:
-                    logging.info(f"from {peer}: route to method success, going to invoke it")
-                    result = await self.invoke_method(request)
-                except Exception as e:
-                    # there is an error during the method executing procedure
-                    # defined by json rpc2, we need to expose it as InternalError
-                    logging.error(f"from {peer}: invoke method {request.method} failure")
-                    exc = InternalError(e.args)
-                    response = ErrorResponse(exc, request.req_id)
-                    if isinstance(request, Request):
-                        self.send_response(writer, response)
-                else:
-                    logging.info(f"from {peer}: invoke method {request.method} success")
-                    response = SuccessResponse(result, request.req_id)
-                    if isinstance(request, Request):
-                        self.send_response(writer, response)
+    async def handle_batched_rpc_call(self, writer, request_json: JSON):
+        pass
 
     async def read(self, reader) -> bytes:
         ''' read a request from client
@@ -132,8 +149,12 @@ class JsonRPC2:
             return result
 
     def get_method(self, method_name: str):
-        ''' get and return rpc method '''
-        return self.methods[method_name]
+        ''' get and return rpc method,
+        if the method is not existed, a ValueError will occured'''
+        try:
+            self.methods[method_name]
+        except KeyError as e:
+            raise ValueError(f'The method "{method_name}" is not registered in the Server')
 
     def add_method(self, method, restrict=True):
         ''' add method to json rpc, to make it rpc callable
@@ -159,22 +180,18 @@ class JsonRPC2:
         else:
             self._send_response(writer, response)
 
-    def get_request_id(self, request_raw: str) -> Optional[int]:
-        ''' try to parse the raw input, and return request id,
-        if it's not existed, return None '''
-        search_result = re.search(r'"id"\s*:\s*"{0,1}(\d)+"{0,1}\s*', request_raw)
-        id_group_index = 1
+    def get_request_id(self, request_json: JSON, err: ErrorResponse) -> Union[str, int]:
+        ''' when an error is detected,
+        try to parse the json input, and return request id,
+        if the error is ParseError or InvalidRequest, it should return None'''
+        if isinstance(err, ParseError) or \
+           isinstance(err, InvalidRequestError):
+            return None
+        return request_json['id']
 
-        if search_result:
-            return search_result.group(id_group_index)
-        return None
-
-    def check_errors(self, request_raw: str) -> Optional[JsonRPC2Error]:
+    def check_errors(self, request_json: JSON) -> Optional[JsonRPC2Error]:
         ''' check if there are any errors in the raw of request,
         if so, return an error object, else return None '''
-        if is_json_invalid(request_raw):
-            return ParseError("Parse Error")
-        request_json = json.loads(request_raw)
         if is_request_invalid(request_json):
             return InvalidRequestError("Invalid Request")
         if is_method_not_exist(request_json['method'], self.methods):

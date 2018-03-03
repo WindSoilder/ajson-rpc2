@@ -49,8 +49,11 @@ def test_is_json_invalid_with_empty_val():
 
 def test_is_request_invalid(request):
     invalid_test_data = {'name': 'zero'}
+
     assert is_request_invalid(invalid_test_data) is True
     assert is_request_invalid(request) is False
+    request['method'] = 3
+    assert is_request_invalid(request) is True
 
 
 def test_is_request_invalid_when_id_not_exist(request):

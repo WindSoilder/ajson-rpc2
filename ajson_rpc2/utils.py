@@ -23,6 +23,8 @@ def is_request_invalid(json: JSON) -> bool:
     for key in json.keys():
         if key not in VALID_MEMBERS:
             return True
+    if isinstance(json['method'], str) is False:
+        return True
     return False
 
 
