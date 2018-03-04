@@ -54,6 +54,7 @@ def test_is_request_invalid(request):
     assert is_request_invalid(request) is False
     request['method'] = 3
     assert is_request_invalid(request) is True
+    assert is_request_invalid(2) is True
 
 
 def test_is_request_invalid_when_id_not_exist(request):

@@ -32,7 +32,7 @@ class _Response:
     def __init__(self, id: int):
         self.resp_id = id
 
-    def to_dict(self):
+    def to_json(self):
         ''' convert the response object to a dict '''
         raise NotImplementedError()
 
@@ -44,10 +44,10 @@ class SuccessResponse(_Response):
         super(SuccessResponse, self).__init__(id)
         self.result = result
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         return {
             "jsonrpc": self.JSONRPC,
-            "id": self.resp_id,
+            "id": self.resp_id or "null",
             "result": self.result
         }
 
@@ -59,9 +59,9 @@ class ErrorResponse(_Response):
         super(ErrorResponse, self).__init__(id)
         self.error = error
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         return {
             "jsonrpc": self.JSONRPC,
-            "id": self.resp_id,
-            "error": self.error.to_dict
+            "id": self.resp_id or "null",
+            "error": self.error.to_dict()
         }

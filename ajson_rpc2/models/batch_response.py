@@ -35,3 +35,6 @@ class BatchResponse:
             self.successes.append(resp)
         else:
             self.errors.append(resp)
+
+    def __len__(self):
+        return len(self.successes) + len(self.errors)
