@@ -68,7 +68,7 @@ If the output message is like this:
 
     all tests run complete with no errors
 
-Then all tests runs successful, most of test cases is get from the [jsonrpc page](http://http://www.jsonrpc.org/specification)
+Then all tests runs successful, most of test cases is get from the [jsonrpc page](http://www.jsonrpc.org/specification)
 
 
 # Best practise
