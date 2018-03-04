@@ -56,8 +56,7 @@ def close_server_process(process: Process):
 
 def main():
     process = start_server_process()
-    import time
-    time.sleep(3)
+
     fails = run_client_tests()
     if len(fails) == 0:
         print("all tests run complete with no errors")
