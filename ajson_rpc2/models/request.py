@@ -1,10 +1,16 @@
 ''' request module for json-rpc2, which contains Request(need server response) and Notification(doesn't need server response) '''
-from .typedef import List, Mapping, Union
+from ..typedef import List, Mapping, Union
 
 
 class _BaseRequest:
     ''' base class for the request object, which contains the jsonrpc version '''
     JSONRPC = "2.0"
+
+    @classmethod
+    def from_dict(cls, req_json: Mapping):
+        ''' method to convert from json object to request class,
+        which should be implement by the sub class'''
+        raise NotImplementedError()
 
 
 class Request(_BaseRequest):
@@ -30,6 +36,14 @@ class Request(_BaseRequest):
         self.params = params
         self.req_id = id
 
+    @classmethod
+    def from_dict(cls, req_json: Mapping):
+        if isinstance(req_json, dict) is False:
+            raise TypeError(f'should use a dict object to convert to Request object')
+        return cls(req_json['method'],
+                   req_json.get('params', None),
+                   req_json['id'])
+
 
 class Notification(_BaseRequest):
     '''
@@ -43,3 +57,10 @@ class Notification(_BaseRequest):
         super(Request, self).__init__()
         self.method = method
         self.params = params
+
+    @classmethod
+    def from_dict(cls, req_json: Mapping):
+        if isinstance(req_json, dict) is False:
+            raise TypeError(f'should use a dict object to convert to Notification object')
+        return cls(req_json['method'],
+                   req_json.get('params', None))

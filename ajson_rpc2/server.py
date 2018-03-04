@@ -1,22 +1,24 @@
 ''' json-rpc2 implementation base on asyncio '''
 import json
 import logging
-import re
 import asyncio
 import functools
+from asyncio import StreamReader, StreamWriter
 
 from .utils import (
-    is_json_invalid, is_method_not_exist,
+    is_method_not_exist,
     is_request_invalid, is_params_invalid
 )
-from .errors import (
+
+from .models.errors import (
     ParseError, InvalidRequestError,
     MethodNotFoundError, InvalidParamsError,
     InternalError, JsonRPC2Error
 )
-from .request import Request, Notification
-from .response import SuccessResponse, ErrorResponse
-from .typedef import Union, Optional, Any
+from .models.request import Request, Notification
+from .models.response import SuccessResponse, ErrorResponse, _Response
+from .models.batch_response import BatchResponse
+from .typedef import Union, Optional, Any, JSON, List
 
 
 class JsonRPC2:
@@ -51,7 +53,7 @@ class JsonRPC2:
             loop = asyncio.get_event_loop()
         self.loop = loop
 
-    async def handle_client(self, reader, writer):
+    async def handle_client(self, reader: StreamReader, writer: StreamWriter):
         ''' main handler for each client connection '''
         peer = writer.get_extra_info('socket').getpeername()
         logging.info(f'got a connection from {peer}')
@@ -64,7 +66,7 @@ class JsonRPC2:
         finally:
             writer.close()
 
-    async def handle_rpc_call(self, reader, writer):
+    async def handle_rpc_call(self, reader: StreamReader, writer: StreamWriter):
         while True:
             peer = writer.get_extra_info('socket').getpeername()
             request_raw = await self.read(reader)
@@ -72,41 +74,80 @@ class JsonRPC2:
             if not request_raw:
                 break   # Client close connection, Clean close
             request_raw = request_raw.decode()
-            error = self.check_errors(request_raw)
-            if error:
-                request_id = self.get_request_id(request_raw)
-                if request_id:
-                    response = ErrorResponse(error, request_id)
-                    self.send_response(writer, response)
-            else:
-                response = None
+
+            # check for invalid json first
+            request_json = None
+            try:
                 request_json = json.loads(request_raw)
-                if 'id' in request_json:
-                    request = Request(request_json['method'],
-                                      request_json['params'],
-                                      request_json['id'])
+            except (json.JSONDecodeError, TypeError) as e:
+                response = ErrorResponse(ParseError("Parse error"),
+                                         None)
+                self.send_response(writer,
+                                   response)
+            else:
+                if isinstance(request_json, list):
+                    response = await self.handle_batched_rpc_call(writer, request_json)
                 else:
-                    request = Notification(request_json['method'],
-                                           request_json['params'])
+                    response = await self.handle_simple_rpc_call(writer, request_json)
 
-                try:
-                    logging.info(f"from {peer}: route to method success, going to invoke it")
-                    result = await self.invoke_method(request)
-                except Exception as e:
-                    # there is an error during the method executing procedure
-                    # defined by json rpc2, we need to expose it as InternalError
-                    logging.error(f"from {peer}: invoke method {request.method} failure")
-                    exc = InternalError(e.args)
-                    response = ErrorResponse(exc, request.req_id)
-                    if isinstance(request, Request):
-                        self.send_response(writer, response)
-                else:
-                    logging.info(f"from {peer}: invoke method {request.method} success")
-                    response = SuccessResponse(result, request.req_id)
-                    if isinstance(request, Request):
-                        self.send_response(writer, response)
+                if response:
+                    self.send_response(writer, response)
 
-    async def read(self, reader) -> bytes:
+    async def handle_simple_rpc_call(self, writer: StreamWriter, request_json: JSON) -> Optional[_Response]:
+        ''' handle for a request, and return a response object(if it need result) '''
+        error = self.check_errors(request_json)
+        peer = writer.get_extra_info('socket').getpeername()
+
+        if error:
+            request_id = self.get_request_id(request_json, error)
+            response = ErrorResponse(error, request_id)
+            return response
+        else:
+            response = None
+            if 'id' in request_json:
+                request = Request.from_dict(request_json)
+            else:
+                request = Notification.from_dict(request_json)
+
+            try:
+                logging.info(f"from {peer}: route to method success, going to invoke it")
+                result = await self.invoke_method(request)
+            except Exception as e:
+                # there is an error during the method executing procedure
+                # defined by json rpc2, we need to expose it as InternalError
+                logging.error(f"from {peer}: invoke method {request.method} failure")
+                exc = InternalError("Internal error")
+                response = ErrorResponse(exc, request.req_id)
+                if isinstance(request, Request):
+                    return response
+            else:
+                logging.info(f"from {peer}: invoke method {request.method} success")
+                response = SuccessResponse(result, request.req_id)
+                if isinstance(request, Request):
+                    return response
+
+    async def handle_batched_rpc_call(self, writer: StreamWriter, request_json: List):
+        ''' handle for batched request, but there are something to noted:
+        1. When receive an empty array, server will return a Response
+        2. When receive array with one element, but the request is Invalid Request,
+           server will return a BatchResponse with one element
+        3. if all requests are Notifications, server will response nothing'''
+        # handle for empty array
+        if len(request_json) == 0:
+            response = ErrorResponse(InvalidRequestError("Invalid Request"),
+                                     None)
+            self.send_response(writer, response)
+            return
+        batch_response = BatchResponse()
+        for req in request_json:
+            response = await self.handle_simple_rpc_call(writer, req)
+            if response:
+                batch_response.append(response)
+        if len(batch_response) != 0:
+            return batch_response
+        return None
+
+    async def read(self, reader: StreamReader) -> bytes:
         ''' read a request from client
         it's needed to return the content of json body'''
         return await reader.readline()
@@ -132,8 +173,12 @@ class JsonRPC2:
             return result
 
     def get_method(self, method_name: str):
-        ''' get and return rpc method '''
-        return self.methods[method_name]
+        ''' get and return rpc method,
+        if the method is not existed, a ValueError will occured'''
+        try:
+            return self.methods[method_name]
+        except KeyError as e:
+            raise ValueError(f'The method "{method_name}" is not registered in the Server')
 
     def add_method(self, method, restrict=True):
         ''' add method to json rpc, to make it rpc callable
@@ -149,38 +194,34 @@ class JsonRPC2:
         else:
             self.methods[method.__name__] = method
 
-    def send_response(self, writer,
-                      response: Union[SuccessResponse, ErrorResponse]):
+    def send_response(self, writer: StreamWriter,
+                      response: Union[SuccessResponse, ErrorResponse, BatchResponse]):
         ''' send json-rpc2 response back to client '''
         # extract the response object to json-dict
-        if isinstance(response, ErrorResponse):
-            # if there is an error happened during the rpc-call
-            self._send_err_response(writer, response)
-        else:
-            self._send_response(writer, response)
+        logging.info(response)
+        resp_body = response.to_json()
+        logging.info(resp_body)
+        writer.write(json.dumps(resp_body).encode() + b'\n')
 
-    def get_request_id(self, request_raw: str) -> Optional[int]:
-        ''' try to parse the raw input, and return request id,
-        if it's not existed, return None '''
-        search_result = re.search(r'"id"\s*:\s*"{0,1}(\d)+"{0,1}\s*', request_raw)
-        id_group_index = 1
+    def get_request_id(self, request_json: JSON, err: ErrorResponse) -> Union[str, int]:
+        ''' when an error is detected,
+        try to parse the json input, and return request id,
+        if the error is ParseError or InvalidRequest, it should return None'''
+        if isinstance(err, ParseError) or \
+           isinstance(err, InvalidRequestError):
+            return None
+        return request_json['id']
 
-        if search_result:
-            return search_result.group(id_group_index)
-        return None
-
-    def check_errors(self, request_raw: str) -> Optional[JsonRPC2Error]:
+    def check_errors(self, request_json: JSON) -> Optional[JsonRPC2Error]:
         ''' check if there are any errors in the raw of request,
         if so, return an error object, else return None '''
-        if is_json_invalid(request_raw):
-            return ParseError("Parse Error")
-        request_json = json.loads(request_raw)
         if is_request_invalid(request_json):
             return InvalidRequestError("Invalid Request")
         if is_method_not_exist(request_json['method'], self.methods):
             return MethodNotFoundError("Method not found")
         method = self.get_method(request_json['method'])
-        if is_params_invalid(method, request_json['params']):
+
+        if is_params_invalid(method, request_json.get('params', None)):
             return InvalidParamsError("Invalid params")
         return None
 
@@ -213,19 +254,3 @@ class JsonRPC2:
             self.loop.run_forever()
         finally:
             self.loop.close()
-
-    def _send_err_response(self, writer, response: ErrorResponse):
-        response_body = {}
-        response_body["error"] = {
-            "code": response.error.err_code,
-            "message": response.error.args[0]
-        }
-        response_body["jsonrpc"] = response.JSONRPC
-        response_body["id"] = response.resp_id
-        writer.write(json.dumps(response_body).encode())
-
-    def _send_response(self, writer, response: SuccessResponse):
-        response_body = response.__dict__
-        response_body["jsonrpc"] = response.JSONRPC
-        response_body["id"] = response.resp_id
-        writer.write(json.dumps(response_body).encode())

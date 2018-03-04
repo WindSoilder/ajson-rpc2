@@ -49,8 +49,12 @@ def test_is_json_invalid_with_empty_val():
 
 def test_is_request_invalid(request):
     invalid_test_data = {'name': 'zero'}
+
     assert is_request_invalid(invalid_test_data) is True
     assert is_request_invalid(request) is False
+    request['method'] = 3
+    assert is_request_invalid(request) is True
+    assert is_request_invalid(2) is True
 
 
 def test_is_request_invalid_when_id_not_exist(request):
@@ -134,7 +138,7 @@ def test_is_params_invalid_for_default_value_functions():
     assert is_params_invalid(rpc_call, more_params) is True
 
     for valid_params in valid_params_tuple:
-        assert is_params_invalid(rpc_call, valid_params_tuple) is False
+        assert is_params_invalid(rpc_call, valid_params) is False
 
 
 def test_is_params_invalid_for_default_value_functions_with_keyword_arguments():

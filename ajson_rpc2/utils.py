@@ -15,6 +15,10 @@ def is_json_invalid(json_str: str) -> bool:
 
 def is_request_invalid(json: JSON) -> bool:
     ''' return true if input is invalid json-rpc2 request object '''
+    # the request may be not dict type
+    if isinstance(json, dict) is False:
+        return True
+
     REQUIRED_MEMBERS = set(["jsonrpc", "method"])
     VALID_MEMBERS = set(["jsonrpc", "method", "id", "params"])
 
@@ -23,6 +27,8 @@ def is_request_invalid(json: JSON) -> bool:
     for key in json.keys():
         if key not in VALID_MEMBERS:
             return True
+    if isinstance(json['method'], str) is False:
+        return True
     return False
 
 
@@ -59,5 +65,8 @@ def is_params_invalid(method, params: Union[dict, list, None]) -> bool:
     else:
         # don't provide any parameter, so check if the method
         # don't need any parameters
-        return len(method_args) == 0 or \
-               len(method_args) - len(method_args.defaults) == 0
+        if len(method_args.args) == 0:
+            return False
+        if method_args.defaults is not None:
+            return len(method_args.args) - len(method_args.defaults) != 0
+        return True
