@@ -54,3 +54,28 @@ Which is client un friendly, and it will be resolved in the future version.
 
 # Support version
 The *ajson-rpc2* is only support for **python3.6+**
+
+# Tests
+*ajson-rpc2* uses pytest to write unit tests.  And it also have acceptance tests.  To run unit test, use the following command:
+
+    pytest
+
+To run acceptance tests, please go into `accept_tests` folder, then runs the following command:
+
+    python accept_test.py
+
+
+# Best practise
+ajson-rpc2 is based on *asyncio*, which is good for IO bound processes, so it is recommended to define rpc call as async functions, this is an example:
+
+    # good
+    @ajson_rpc.rpc_call
+    async def fetch():
+        await async.sleep(3)
+        return 5
+
+    # bad
+    @ajson_rpc.rpc_call
+    def fetch():
+        time.sleep(3)
+        return 5
