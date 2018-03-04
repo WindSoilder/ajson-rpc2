@@ -37,7 +37,7 @@ def start_server_process():
 def run_client_tests():
     # detect all test cases
     test_members = inspect.getmembers(accept_test_cases,
-                                      predicate=lambda x: inspect.isfunction(x) and x.__name__.startswith('atest'))
+                                      predicate=lambda x: inspect.isfunction(x) and x.__name__.startswith('test'))
     test_funcs = map(lambda x: x[1], test_members)
     error_dict = {}
 

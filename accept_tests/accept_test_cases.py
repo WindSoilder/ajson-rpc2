@@ -83,7 +83,7 @@ def test_invalid_params():
     assert resp == expect, err_format.format(actual=resp, expect=expect)
 
 
-def atest_internal_error():
+def test_internal_error():
     data = {"jsonrpc": "2.0", "method": "have_error_method", "params": [23], "id": 2}
     expect = {"jsonrpc": "2.0", "error": {"code": -32603, "message": "Internal error"}, "id": 2}
     resp = send_and_receive_data(data)
@@ -104,7 +104,7 @@ def test_batched_request():
     assert resp == expect, err_format.format(actual=resp, expect=expect)
 
 
-def atest_batched_request_with_invalid_json():
+def test_batched_request_with_invalid_json():
     data = b'[{"jsonrpc": "2.0", "method": "sum", "params": [1,2,4], "id": "1"},{"jsonrpc": "2.0", "method"]'
     expect = {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": "null"}
     resp = send_raw_and_receive_data(data)
