@@ -71,7 +71,7 @@ ajson-rpc2 is based on *asyncio*, which is good for IO bound processes, so it is
     # good
     @ajson_rpc.rpc_call
     async def fetch():
-        await async.sleep(3)
+        await asyncio.sleep(3)
         return 5
 
     # bad
