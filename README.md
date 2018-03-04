@@ -64,6 +64,12 @@ To run acceptance tests, please go into `accept_tests` folder, then runs the fol
 
     python accept_test.py
 
+If the output message is like this:
+
+    all tests run complete with no errors
+
+Then all tests runs successful, most of test cases if get from the [jsonrpc page](http://http://www.jsonrpc.org/specification)
+
 
 # Best practise
 ajson-rpc2 is based on *asyncio*, which is good for IO bound processes, so it is recommended to define rpc call as async functions, this is an example:
