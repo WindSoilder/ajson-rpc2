@@ -19,5 +19,5 @@ setup(
     maintainer_email='WindSoilder@outlook.com',
     url='https://github.com/WindSoilder/ajson-rpc2',
     license='MIT',
-    packages=['ajson_rpc2']
+    packages=['ajson_rpc2', 'ajson_rpc2.models']
 )
