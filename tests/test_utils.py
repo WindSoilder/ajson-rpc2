@@ -138,7 +138,7 @@ def test_is_params_invalid_for_default_value_functions():
     assert is_params_invalid(rpc_call, more_params) is True
 
     for valid_params in valid_params_tuple:
-        assert is_params_invalid(rpc_call, valid_params_tuple) is False
+        assert is_params_invalid(rpc_call, valid_params) is False
 
 
 def test_is_params_invalid_for_default_value_functions_with_keyword_arguments():
