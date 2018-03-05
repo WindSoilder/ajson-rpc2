@@ -1,5 +1,5 @@
 # ajson-rpc2
-An implementation of [json rpc 2.0](http://www.jsonrpc.org/) which is based on python3 asyncio module, it's designed for *async* and *extensible* for json-rpc based protocol (like language server protocol, or HTTP based json rpc 2.0).  And the json-rpc protocol is based on *TCP*.
+An implementation of [json rpc 2.0](http://www.jsonrpc.org/) which is based on python3 asyncio module, it's designed for *async* and *extensible* for json-rpc based protocol (like language server protocol).  And the json-rpc protocol is based on *TCP*.
 
 # Install
 Use through *setup.py*
@@ -10,6 +10,8 @@ Use through *setup.py*
 
 # Usage
 It's easy to use :)
+
+## Server
 ```python
     from ajson_rpc2 import JsonRPC2
 
@@ -29,6 +31,7 @@ It's easy to use :)
     server.start(port=9999)
 ```
 
+## Client
 When we run the server successfully, we can use *telnet* to test it:
 
     $ telnet localhost 9999
@@ -36,6 +39,19 @@ When we run the server successfully, we can use *telnet* to test it:
 
     # should return
     {"jsonrpc": "2.0", "result": 19, "id": 1}
+
+Note that there is no standard client implementation, if you need a client sample(written in python), you can check `client.py` file which lays in `accept_tests` folder. Here is an example for the usage of `client.py`:
+
+    # assume that you have run server successfully, and the port is 9999
+    from client import MockJsonRPC2Client
+
+    client = MockJsonRPC2Client(ip_addr, 9999)
+    client.connect()
+    client.send_data({"jsonrpc": "2.0", "method": "subtract", "params": [42, 23], "id": 1})
+
+    client.recv()  # which will get result back from server
+
+`MockJsonRPC2Client` can send python object(which can be parsed in json) to server.  But please note that it's just a client for testing.
 
 # Features
 1. Easy to use, support both async call and sync call
