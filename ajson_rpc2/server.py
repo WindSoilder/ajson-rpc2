@@ -93,10 +93,9 @@ class JsonRPC2:
                 if response:
                     self.send_response(writer, response)
 
-    async def handle_simple_rpc_call(self, writer: StreamWriter, request_json: JSON) -> Optional[_Response]:
+    async def handle_simple_rpc_call(self, request_json: JSON) -> Optional[_Response]:
         ''' handle for a request, and return a response object(if it need result) '''
         error = self.check_errors(request_json)
-        peer = writer.get_extra_info('socket').getpeername()
 
         if error:
             request_id = self.get_request_id(request_json, error)
@@ -110,23 +109,20 @@ class JsonRPC2:
                 request = Notification.from_dict(request_json)
 
             try:
-                logging.info(f"from {peer}: route to method success, going to invoke it")
                 result = await self.invoke_method(request)
             except Exception as e:
                 # there is an error during the method executing procedure
                 # defined by json rpc2, we need to expose it as InternalError
-                logging.error(f"from {peer}: invoke method {request.method} failure")
                 exc = InternalError("Internal error")
                 response = ErrorResponse(exc, request.req_id)
                 if isinstance(request, Request):
                     return response
             else:
-                logging.info(f"from {peer}: invoke method {request.method} success")
                 response = SuccessResponse(result, request.req_id)
                 if isinstance(request, Request):
                     return response
 
-    async def handle_batched_rpc_call(self, writer: StreamWriter, request_json: List):
+    async def handle_batched_rpc_call(self, request_json: List) -> Union[ErrorResponse, BatchResponse, None]:
         ''' handle for batched request, but there are something to noted:
         1. When receive an empty array, server will return a Response
         2. When receive array with one element, but the request is Invalid Request,
@@ -136,11 +132,10 @@ class JsonRPC2:
         if len(request_json) == 0:
             response = ErrorResponse(InvalidRequestError("Invalid Request"),
                                      None)
-            self.send_response(writer, response)
-            return
+            return response
         batch_response = BatchResponse()
         for req in request_json:
-            response = await self.handle_simple_rpc_call(writer, req)
+            response = await self.handle_simple_rpc_call(req)
             if response:
                 batch_response.append(response)
         if len(batch_response) != 0:

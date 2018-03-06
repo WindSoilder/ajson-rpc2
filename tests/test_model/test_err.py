@@ -1,7 +1,7 @@
 ''' test for the error object
 to make sure that the error object contains
 proper error code '''
-from .context import (
+from ..context import (
     ParseError, InvalidRequestError,
     MethodNotFoundError, InvalidParamsError,
     InternalError
