@@ -50,7 +50,7 @@ class JsonRPC2:
     def __init__(self, loop=None):
         self.methods = {}
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.new_event_loop()
         self.loop = loop
 
     async def handle_client(self, reader: StreamReader, writer: StreamWriter):
@@ -198,7 +198,7 @@ class JsonRPC2:
         logging.info(resp_body)
         writer.write(json.dumps(resp_body).encode() + b'\n')
 
-    def get_request_id(self, request_json: JSON, err: ErrorResponse) -> Union[str, int]:
+    def get_request_id(self, request_json: JSON, err: JsonRPC2Error) -> Union[str, int]:
         ''' when an error is detected,
         try to parse the json input, and return request id,
         if the error is ParseError or InvalidRequest, it should return None'''
