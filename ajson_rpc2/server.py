@@ -86,9 +86,9 @@ class JsonRPC2:
                                    response)
             else:
                 if isinstance(request_json, list):
-                    response = await self.handle_batched_rpc_call(writer, request_json)
+                    response = await self.handle_batched_rpc_call(request_json)
                 else:
-                    response = await self.handle_simple_rpc_call(writer, request_json)
+                    response = await self.handle_simple_rpc_call(request_json)
 
                 if response:
                     self.send_response(writer, response)
