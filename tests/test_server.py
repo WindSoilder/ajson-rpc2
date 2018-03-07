@@ -31,6 +31,10 @@ class MockStreamReader:
 
 
 class MockStreamWriter:
+    class _ConnectionInfo:
+        def getpeername(self):
+            pass
+
     def write(self, content):
         global mock_queue
         mock_queue.put(content)
@@ -39,6 +43,9 @@ class MockStreamWriter:
         ''' mock close will empty the queue '''
         global mock_queue
         mock_queue = Queue()
+
+    def get_extra_info(self, info):
+        return self._ConnectionInfo()
 
 
 @pytest.fixture
@@ -60,8 +67,117 @@ def writer():
     mock_writer.close()
 
 
+def test_handle_client(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+    # for testing handle_client method
+    # the inner method handle_rpc_call is not what we interested
+    # so mock the function to make test_app call
+    async def mock_handle_rpc_call(reader, writer):
+        pass
+
+    setattr(test_app, "handle_rpc_call", mock_handle_rpc_call)
+    test_app.loop.run_until_complete(test_app.handle_client(reader, writer))
+
+
+def test_handle_client_for_client_error(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+    # for testing handle_client method
+    # the inner method handle_rpc_call is not what we interested
+    # so mock the function to make test_app call
+    async def mock_handle_error_rpc_call(reader, writer):
+        1 / 0
+
+    setattr(test_app, "handle_rpc_call", mock_handle_error_rpc_call)
+
+    test_app.loop.run_until_complete(test_app.handle_client(reader, writer))
+
+
+def test_handle_rpc_call(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+    @test_app.rpc_call
+    def half(num):
+        return num // 2
+
+    # send mock request to server
+    writer.write(json.dumps({
+        "id": 1,
+        "jsonrpc": "2.0",
+        "method": "half",
+        "params": [4]
+    }).encode())
+    # send empty string to break server forever loop
+    writer.write('')
+
+    test_app.loop.run_until_complete(test_app.handle_rpc_call(reader, writer))
+
+    # fetch response from reader and check result
+    resp_bytes = test_app.loop.run_until_complete(reader.readline())
+    resp_json = json.loads(resp_bytes.decode())
+    assert resp_json == {
+        "id": 1,
+        "jsonrpc": "2.0",
+        "result": 2
+    }
+
+
+def test_handle_rpc_call_with_invalid_json(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+    # send mock request to server
+    writer.write(b'{"id": 1, "jsonrpc":}')
+    # send empty string to break server forever loop
+    writer.write('')
+
+    test_app.loop.run_until_complete(test_app.handle_rpc_call(reader, writer))
+
+    # fetch response from reader and check result
+    resp_bytes = test_app.loop.run_until_complete(reader.readline())
+    resp_json = json.loads(resp_bytes.decode())
+    assert resp_json == {
+        "id": "null",
+        "error": {
+            "code": -32700,
+            "message": "Parse error"
+        },
+        "jsonrpc": "2.0"
+    }
+
+
 # for now it still lack tests for handle rpc_call method
 # and handle_client method
+def test_handle_rpc_call_with_batched_request(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+    @test_app.rpc_call
+    def half(num):
+        return num // 2
+
+    # send mock request to server
+    send_data = [
+        {
+            "id": 1,
+            "jsonrpc": "2.0",
+            "method": "half",
+            "params": [4]
+        },
+        {        
+            "id": 3,
+            "jsonrpc": "2.0",
+            "method": "half",
+            "params": [9]
+        }
+    ]
+    writer.write(json.dumps(send_data).encode())
+    # send empty string to break server forever loop
+    writer.write('')
+
+    test_app.loop.run_until_complete(test_app.handle_rpc_call(reader, writer))
+
+    # fetch response from reader and check result
+    resp_bytes = test_app.loop.run_until_complete(reader.readline())
+    resp_json = json.loads(resp_bytes.decode())
+
+    id_to_result_dict = {
+        1: 2,
+        3: 4
+    }
+
+    for resp in resp_json:
+        assert resp['result'] == id_to_result_dict[resp['id']]
+
 
 def test_init_server_with_other_eventloop():
     loop = asyncio.new_event_loop()
@@ -375,3 +491,31 @@ def test_decorate_annotation_rpc_call(test_app: JsonRPC2):
         return num1 * num2
 
     assert len(test_app.methods) == 2
+
+
+def test_start():
+    # here we will create a mock loop
+    # to test the logic of start
+    class MockLoop(asyncio.AbstractEventLoop):
+        def __init__(self):
+            self.have_invoke_run_until_complete = False
+            self.have_invoke_run_forever = False
+            self.have_invoke_close = False
+
+        def run_until_complete(self, coroutine):
+            self.have_invoke_run_until_complete = True
+
+        def run_forever(self):
+            self.have_invoke_run_forever = True
+
+        def close(self):
+            self.have_invoke_close = True
+
+    loop = MockLoop()
+    test_app = JsonRPC2(loop)
+
+    test_app.start()
+
+    assert loop.have_invoke_run_until_complete is True
+    assert loop.have_invoke_run_forever is True
+    assert loop.have_invoke_close is True
