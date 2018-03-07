@@ -18,3 +18,13 @@ from ajson_rpc2.models.errors import (
 from ajson_rpc2.models.response import (
     SuccessResponse, ErrorResponse
 )
+
+from ajson_rpc2.models.request import (
+    Request, Notification
+)
+
+from ajson_rpc2.models.batch_request import BatchRequest
+
+from ajson_rpc2.models.batch_response import BatchResponse
+
+from ajson_rpc2.models.fixed_list import FixedList

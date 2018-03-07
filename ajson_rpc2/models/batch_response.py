@@ -38,3 +38,9 @@ class BatchResponse:
 
     def __len__(self):
         return len(self.successes) + len(self.errors)
+
+    def __iter__(self):
+        for response in self.successes:
+            yield response
+        for error in self.errors:
+            yield error

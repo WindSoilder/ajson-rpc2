@@ -118,9 +118,8 @@ class JsonRPC2:
                 if isinstance(request, Request):
                     return response
             else:
-                response = SuccessResponse(result, request.req_id)
                 if isinstance(request, Request):
-                    return response
+                    return SuccessResponse(result, request.req_id)
 
     async def handle_batched_rpc_call(self, request_json: List) -> Union[ErrorResponse, BatchResponse, None]:
         ''' handle for batched request, but there are something to noted:

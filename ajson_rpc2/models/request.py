@@ -54,7 +54,7 @@ class Notification(_BaseRequest):
     As such, the Client would not be aware of any errors (like e.g. "Invalid params","Internal rror").'''
 
     def __init__(self, method: str, params: Union[List, Mapping]):
-        super(Request, self).__init__()
+        super(Notification, self).__init__()
         self.method = method
         self.params = params
 
