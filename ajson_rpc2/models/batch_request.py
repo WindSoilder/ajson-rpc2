@@ -12,9 +12,13 @@ class BatchRequest:
     Use batch request should improve client or server performance
     Due to it can save the transfer time
     '''
-    def __init__(self):
-        self.requests = FixedList(Request)
-        self.notifications = FixedList(Notification)
+    def __init__(self, requests: FixedList=None, notifications: FixedList=None):
+        if requests is None:
+            requests = FixedList(Request)
+        if notifications is None:
+            notifications = FixedList(Notification)
+        self.requests = requests
+        self.notifications = notifications
 
     @classmethod
     def from_json(cls, json: List[Dict]):
@@ -26,8 +30,8 @@ class BatchRequest:
         batch_request = cls()
         for req in json:
             if 'id' in req:
-                batch_request.requests.append(Request.from_dict(req))
+                batch_request.requests.append(Request.from_json(req))
             else:
-                batch_request.notifications.append(Notification.from_dict(req))
+                batch_request.notifications.append(Notification.from_json(req))
 
         return batch_request

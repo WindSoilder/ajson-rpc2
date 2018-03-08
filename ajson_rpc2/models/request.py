@@ -7,7 +7,7 @@ class _BaseRequest:
     JSONRPC = "2.0"
 
     @classmethod
-    def from_dict(cls, req_json: Mapping):
+    def from_json(cls, req_json: Mapping):
         ''' method to convert from json object to request class,
         which should be implement by the sub class'''
         raise NotImplementedError()
@@ -37,7 +37,7 @@ class Request(_BaseRequest):
         self.req_id = id
 
     @classmethod
-    def from_dict(cls, req_json: Mapping):
+    def from_json(cls, req_json: Mapping):
         if isinstance(req_json, dict) is False:
             raise TypeError(f'should use a dict object to convert to Request object')
         return cls(req_json['method'],
@@ -59,7 +59,7 @@ class Notification(_BaseRequest):
         self.params = params
 
     @classmethod
-    def from_dict(cls, req_json: Mapping):
+    def from_json(cls, req_json: Mapping):
         if isinstance(req_json, dict) is False:
             raise TypeError(f'should use a dict object to convert to Notification object')
         return cls(req_json['method'],

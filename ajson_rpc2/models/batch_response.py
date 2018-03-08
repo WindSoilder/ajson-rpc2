@@ -18,9 +18,13 @@ class BatchResponse:
     BatchResponse represent the response
     to several rpc-call at the same time
     '''
-    def __init__(self):
-        self.successes = FixedList(SuccessResponse)
-        self.errors = FixedList(ErrorResponse)
+    def __init__(self, successes: FixedList=None, errors: FixedList=None):
+        if successes is None:
+            successes = FixedList(SuccessResponse)
+        if errors is None:
+            errors = FixedList(ErrorResponse)
+        self.successes = successes
+        self.errors = errors
 
     def to_json(self) -> List:
         result_list = []

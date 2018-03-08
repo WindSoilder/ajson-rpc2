@@ -104,9 +104,9 @@ class JsonRPC2:
         else:
             response = None
             if 'id' in request_json:
-                request = Request.from_dict(request_json)
+                request = Request.from_json(request_json)
             else:
-                request = Notification.from_dict(request_json)
+                request = Notification.from_json(request_json)
 
             try:
                 result = await self.invoke_method(request)
