@@ -1,4 +1,11 @@
+import pytest
+
 from ..context import Request, Notification
+
+
+def test_request_from_json_with_invalid_type():
+    with pytest.raises(TypeError):
+        Request.from_json([])
 
 
 def test_request_from_json():
@@ -34,6 +41,11 @@ def test_notification_from_json():
 
     assert req.method == 'test'
     assert req.params == [1]
+
+
+def test_notification_from_json_with_wrong_type():
+    with pytest.raises(TypeError):
+        Notification.from_json([])
 
 
 def test_notification_from_json_with_no_params():

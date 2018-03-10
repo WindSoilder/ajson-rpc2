@@ -29,6 +29,10 @@ def keyword_params_request():
     }
 
 
+def rpc_call_with_all_default_arguments(num1=10, num2=20):
+    return num1 * num2
+
+
 def rpc_call(num1, num2, num3, num4=1000, num5=2000):
     return num1 + num2 + num3 - num4 - num5
 
@@ -175,3 +179,22 @@ def test_is_params_invalid_for_default_value_functions_with_keyword_arguments():
 
     for more_params in more_params_tuple:
         assert is_params_invalid(rpc_call, more_params) is True
+
+
+def test_is_params_invalid_for_all_default_arguments():
+    valid_params = (
+        None,
+        [1],
+        [1, 2]
+    )
+
+    invalid_params = (
+        [1, 2, 3],
+        [1, 2, 3, 4]
+    )
+
+    for valid_param in valid_params:
+        assert is_params_invalid(rpc_call_with_all_default_arguments, valid_param) is False
+
+    for invalid_param in invalid_params:
+        assert is_params_invalid(rpc_call_with_all_default_arguments, invalid_param) is True
