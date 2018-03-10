@@ -22,3 +22,23 @@ class FixedList(UserList):
         if isinstance(item, self.item_type) is False:
             raise TypeError(f'type of item should be {self.item_type}')
         super(FixedList, self).append(item)
+
+    def insert(self, index, item):
+        ''' when insert an item to list,
+        the FixedList will check if the item have proper
+        type, if not, an TypeError will be raised '''
+        if isinstance(item, self.item_type) is False:
+            raise TypeError(f'type of item should be {self.item_type}')
+        super(FixedList, self).insert(index, item)
+
+    def extend(self, iterable):
+        '''
+        extend list by appending elements from the iterable
+        but the fixed list will check if each element have proper
+        type '''
+        tmp_list = list(iterable)
+        for item in tmp_list:
+            if isinstance(item, self.item_type) is False:
+                raise TypeError(f'type of item should be {self.item_type}')
+
+        super(FixedList, self).extend(iterable)

@@ -18,7 +18,7 @@ data
 class JsonRPC2Error(Exception):
     err_code = None
 
-    def to_dict(self):
+    def to_json(self):
         ''' convert the JsonRPC2Error object to dict '''
         return {
             "code": self.err_code,

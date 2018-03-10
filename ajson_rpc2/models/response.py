@@ -47,7 +47,7 @@ class SuccessResponse(_Response):
     def to_json(self) -> dict:
         return {
             "jsonrpc": self.JSONRPC,
-            "id": self.resp_id or "null",
+            "id": self.resp_id,
             "result": self.result
         }
 
@@ -63,5 +63,5 @@ class ErrorResponse(_Response):
         return {
             "jsonrpc": self.JSONRPC,
             "id": self.resp_id or "null",
-            "error": self.error.to_dict()
+            "error": self.error.to_json()
         }
