@@ -1,6 +1,8 @@
 import pytest
 import json
 import asyncio
+
+from unittest.mock import Mock, patch
 from queue import Queue
 
 from .context import (
@@ -8,8 +10,8 @@ from .context import (
     InvalidParamsError, InvalidRequestError, MethodNotFoundError,
     ParseError, InternalError,
     SuccessResponse, ErrorResponse,
-    Request, Notification,
-    BatchRequest, BatchResponse
+    Request,
+    BatchResponse
 )
 
 mock_queue = Queue()
@@ -19,33 +21,19 @@ def duplicate_add():
     pass
 
 
-class MockStreamReader:
-    async def readline(self):
-        global mock_queue
-        return mock_queue.get()
-
-    def close(self):
-        ''' mock close will empty the queue '''
-        global mock_queue
-        mock_queue = Queue()
+async def read_request():
+    global mock_queue
+    return mock_queue.get()
 
 
-class MockStreamWriter:
-    class _ConnectionInfo:
-        def getpeername(self):
-            pass
+def write_request(content):
+    global mock_queue
+    mock_queue.put(content)
 
-    def write(self, content):
-        global mock_queue
-        mock_queue.put(content)
 
-    def close(self):
-        ''' mock close will empty the queue '''
-        global mock_queue
-        mock_queue = Queue()
-
-    def get_extra_info(self, info):
-        return self._ConnectionInfo()
+def empty_queue():
+    global mock_queue
+    mock_queue.queue.clear()
 
 
 @pytest.fixture
@@ -55,19 +43,28 @@ def test_app():
 
 @pytest.fixture
 def reader():
-    mock_reader = MockStreamReader()
+    mock_reader = Mock()
+    mock_reader.readline.side_effect = read_request
+    mock_reader.close.side_effect = empty_queue
+
     yield mock_reader
     mock_reader.close()
 
 
 @pytest.fixture
 def writer():
-    mock_writer = MockStreamWriter()
+    mock_writer = Mock()
+
+    mock_writer.write.side_effect = write_request
+    mock_writer.close.side_effect = empty_queue
+    connection_info = mock_writer.get_extra_info.return_value
+    connection_info.getpeername.return_value = "test"
+
     yield mock_writer
     mock_writer.close()
 
 
-def test_handle_client(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+def test_handle_client(test_app: JsonRPC2, reader: Mock, writer: Mock):
     # for testing handle_client method
     # the inner method handle_rpc_call is not what we interested
     # so mock the function to make test_app call
@@ -78,7 +75,7 @@ def test_handle_client(test_app: JsonRPC2, reader: MockStreamReader, writer: Moc
     test_app.loop.run_until_complete(test_app.handle_client(reader, writer))
 
 
-def test_handle_client_for_client_error(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+def test_handle_client_for_client_error(test_app: JsonRPC2, reader: Mock, writer: Mock):
     # for testing handle_client method
     # the inner method handle_rpc_call is not what we interested
     # so mock the function to make test_app call
@@ -90,7 +87,7 @@ def test_handle_client_for_client_error(test_app: JsonRPC2, reader: MockStreamRe
     test_app.loop.run_until_complete(test_app.handle_client(reader, writer))
 
 
-def test_handle_rpc_call(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+def test_handle_rpc_call(test_app: JsonRPC2, reader: Mock, writer: Mock):
     @test_app.rpc_call
     def half(num):
         return num // 2
@@ -117,7 +114,7 @@ def test_handle_rpc_call(test_app: JsonRPC2, reader: MockStreamReader, writer: M
     }
 
 
-def test_handle_rpc_call_with_invalid_json(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+def test_handle_rpc_call_with_invalid_json(test_app: JsonRPC2, reader: Mock, writer: Mock):
     # send mock request to server
     writer.write(b'{"id": 1, "jsonrpc":}')
     # send empty string to break server forever loop
@@ -140,7 +137,7 @@ def test_handle_rpc_call_with_invalid_json(test_app: JsonRPC2, reader: MockStrea
 
 # for now it still lack tests for handle rpc_call method
 # and handle_client method
-def test_handle_rpc_call_with_batched_request(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+def test_handle_rpc_call_with_batched_request(test_app: JsonRPC2, reader: Mock, writer: Mock):
     @test_app.rpc_call
     def half(num):
         return num // 2
@@ -302,7 +299,7 @@ def test_handle_batched_call_with_all_notifications(test_app: JsonRPC2):
     assert response is None
 
 
-def test_read(test_app: JsonRPC2, reader: MockStreamReader, writer: MockStreamWriter):
+def test_read(test_app: JsonRPC2, reader: Mock, writer: Mock):
     data = {'name': 'zero', 'age': 19}
     writer.write(data)
     assert test_app.loop.run_until_complete(test_app.read(reader)) is data
@@ -378,8 +375,8 @@ def test_add_method_with_restrict_mode(test_app: JsonRPC2):
 
 
 def test_send_response(test_app: JsonRPC2,
-                       reader: MockStreamReader,
-                       writer: MockStreamWriter):
+                       reader: Mock,
+                       writer: Mock):
     response = SuccessResponse("10", 3)
     test_app.send_response(writer, response)
 
@@ -496,26 +493,12 @@ def test_decorate_annotation_rpc_call(test_app: JsonRPC2):
 def test_start():
     # here we will create a mock loop
     # to test the logic of start
-    class MockLoop(asyncio.AbstractEventLoop):
-        def __init__(self):
-            self.have_invoke_run_until_complete = False
-            self.have_invoke_run_forever = False
-            self.have_invoke_close = False
+    mock_loop = Mock()
+    mock = Mock(return_value=1)
+    test_app = JsonRPC2(mock_loop)
 
-        def run_until_complete(self, coroutine):
-            self.have_invoke_run_until_complete = True
-
-        def run_forever(self):
-            self.have_invoke_run_forever = True
-
-        def close(self):
-            self.have_invoke_close = True
-
-    loop = MockLoop()
-    test_app = JsonRPC2(loop)
-
-    test_app.start()
-
-    assert loop.have_invoke_run_until_complete is True
-    assert loop.have_invoke_run_forever is True
-    assert loop.have_invoke_close is True
+    with patch("asyncio.start_server", mock):
+        test_app.start()
+        mock_loop.run_until_complete.assert_called_with(1)
+        mock_loop.run_forever.assert_called_with()
+        mock_loop.close.assert_called_with()
