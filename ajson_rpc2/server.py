@@ -3,6 +3,7 @@ import json
 import logging
 import asyncio
 import functools
+import uvloop
 from asyncio import StreamReader, StreamWriter
 
 from .utils import (
@@ -50,6 +51,7 @@ class JsonRPC2:
     def __init__(self, loop=None):
         self.methods = {}
         if loop is None:
+            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
             loop = asyncio.new_event_loop()
         self.loop = loop
 
