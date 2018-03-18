@@ -10,9 +10,9 @@ from .context import (
     InvalidParamsError, InvalidRequestError, MethodNotFoundError,
     ParseError, InternalError,
     SuccessResponse, ErrorResponse,
-    Request, Notification,
-    BatchRequest, BatchResponse,
-    ExtraNeed, RpcMethod
+    Request,
+    BatchResponse,
+    ExtraNeed
 )
 
 mock_queue = Queue()
@@ -264,7 +264,7 @@ def test_handle_batched_rpc_call(test_app: JsonRPC2):
 def test_handle_batched_rpc_call_which_need_multiprocessing(test_app: JsonRPC2):
     test_app.add_method(duplicate_add, need_multiprocessing=True)
     request_data = [
-        {"id": 1, "method": "duplicate_ad", "jsonrpc": "2.0"},
+        {"id": 1, "method": "duplicate_add", "jsonrpc": "2.0"},
         {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"}
     ]
 
