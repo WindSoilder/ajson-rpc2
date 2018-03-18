@@ -139,3 +139,25 @@ ajson-rpc2 is based on *asyncio*, which is good for IO bound processes, so it is
     def fetch():
         time.sleep(3)
         return 5
+
+
+# Advanced Usage
+Assume that you have a CPU bound function, and you need to make it rpc call, it's recommended to use `add_method` method with `need_multiprocessing` argument, this is an example:
+
+    json_rpc = JsonRPC2()
+
+    def subtract(num1, num2):
+        total = 0
+        for i in range(1000000):
+            total += i
+        return total / 100 + num1 - num2
+
+    # use add_method with need_multiprocessing to
+    # make the method is called in another process
+    json_rpc.add_method(high_cpu, need_multiprocessing=True)
+
+When client send batch request to server like this:
+
+    [{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3},{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}]
+
+The subtract method will be called in the inner process pool executor, which can improve performance.

@@ -9,14 +9,15 @@ from .context import (
     ParseError, InternalError,
     SuccessResponse, ErrorResponse,
     Request, Notification,
-    BatchRequest, BatchResponse
+    BatchRequest, BatchResponse,
+    ExtraNeed, RpcMethod
 )
 
 mock_queue = Queue()
 
 
 def duplicate_add():
-    pass
+    return 4
 
 
 class MockStreamReader:
@@ -263,6 +264,24 @@ def test_handle_batched_rpc_call(test_app: JsonRPC2):
         assert response.result == response_dict[response.resp_id]
 
 
+def test_handle_batched_rpc_call_which_need_multiprocessing(test_app: JsonRPC2):
+    test_app.add_method(duplicate_add, need_multiprocessing=True)
+    request_data = [
+        {"id": 1, "method": "duplicate_ad", "jsonrpc": "2.0"},
+        {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"}
+    ]
+
+    responses = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call(request_data))
+
+    assert len(responses) == 2
+    response_dict = {
+        1: 4,
+        2: 4,
+    }
+    for response in responses:
+        assert response.result == response_dict[response.resp_id]
+
+
 def test_handle_empty_batched(test_app: JsonRPC2):
     response = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call([]))
     assert isinstance(response, ErrorResponse)
@@ -349,7 +368,7 @@ def test_get_method(test_app: JsonRPC2):
         pass
     test_app.add_method(add)
 
-    assert test_app.methods['add'] is add
+    assert test_app.get_method('add') is add
 
 
 def test_get_not_existed_method(test_app: JsonRPC2):
@@ -364,6 +383,7 @@ def test_add_method(test_app: JsonRPC2):
     test_app.add_method(add)
     assert 'add' in test_app.methods
     assert len(test_app.methods) == 1
+    assert test_app.get_rpc_method('add').extra_need is ExtraNeed.NOTHING
 
 
 def test_add_method_with_restrict_mode(test_app: JsonRPC2):
@@ -375,6 +395,26 @@ def test_add_method_with_restrict_mode(test_app: JsonRPC2):
             pass
 
         test_app.add_method(duplicate_add)
+
+
+def test_add_method_which_need_multiprocessing(test_app: JsonRPC2):
+    def add(num1, num2):
+        pass
+
+    test_app.add_method(add, need_multiprocessing=True)
+
+    assert 'add' in test_app.methods
+    assert test_app.get_rpc_method('add').extra_need is ExtraNeed.PROCESS
+
+
+def test_add_method_which_need_multithreading(test_app: JsonRPC2):
+    def add(num1, num2):
+        pass
+
+    test_app.add_method(add, need_multithreading=True)
+
+    assert 'add' in test_app.methods
+    assert test_app.get_rpc_method('add').extra_need is ExtraNeed.THREAD
 
 
 def test_send_response(test_app: JsonRPC2,
