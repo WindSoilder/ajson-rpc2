@@ -28,3 +28,5 @@ from ajson_rpc2.models.batch_request import BatchRequest
 from ajson_rpc2.models.batch_response import BatchResponse
 
 from ajson_rpc2.models.fixed_list import FixedList
+
+from ajson_rpc2.method import ExtraNeed, RpcMethod

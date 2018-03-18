@@ -31,6 +31,44 @@ It's easy to use :)
     server.start(port=9999)
 ```
 
+*ajson-rpc2* also support namespace, to modular rpc calls.
+```python
+    from ason_rpc2 import JsonRPC2, Module
+
+    file_module = Module("document")
+    plan_module = Module("plan")
+    server = JsonRPC2()
+
+    # add functions to module
+    @file_module.rpc_call
+    def open(filename: str):
+        pass
+
+
+    @file_module.rpc_call
+    def write(filename: str, content: str):
+        pass
+
+
+    @plan_module.rpc_call
+    def add(plan_name: str):
+        pass
+
+
+    @plan_module.rpc_call
+    def delete(plan_name: str):
+        pass
+
+
+    server.register_module(file_module)
+    server.register_module(plan_module)
+```
+
+Then client can make rpc call like this:
+
+    {"jsonrpc": "2.0", "method": "document/open", "params": ["text.txt"], "id": 4}
+    {"jsonrpc": "2.0", "method": "plan.delete", "params": ["plan1.txt"], "id": 5}
+
 ## Client
 When we run the server successfully, we can use *telnet* to test it:
 
@@ -101,3 +139,25 @@ ajson-rpc2 is based on *asyncio*, which is good for IO bound processes, so it is
     def fetch():
         time.sleep(3)
         return 5
+
+
+# Advanced Usage
+Assume that you have a CPU bound function, and you need to make it rpc call, it's recommended to use `add_method` method with `need_multiprocessing` argument, this is an example:
+
+    json_rpc = JsonRPC2()
+
+    def subtract(num1, num2):
+        total = 0
+        for i in range(1000000):
+            total += i
+        return total / 100 + num1 - num2
+
+    # use add_method with need_multiprocessing to
+    # make the method is called in another process
+    json_rpc.add_method(high_cpu, need_multiprocessing=True)
+
+When client send batch request to server like this:
+
+    [{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3},{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}]
+
+The subtract method will be called in the inner process pool executor, which can improve performance.
