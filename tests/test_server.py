@@ -151,7 +151,7 @@ def test_handle_rpc_call_with_batched_request(test_app: JsonRPC2, reader: Mock, 
             "method": "half",
             "params": [4]
         },
-        {        
+        {
             "id": 3,
             "jsonrpc": "2.0",
             "method": "half",
@@ -259,6 +259,16 @@ def test_handle_batched_rpc_call(test_app: JsonRPC2):
     }
     for response in responses:
         assert response.result == response_dict[response.resp_id]
+
+
+def test_handle_batched_rpc_call_with_an_invalid_batch(test_app: JsonRPC2):
+    request_data = [1]
+
+    responses = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call(request_data))
+
+    assert responses.to_json() == [
+        {"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": "null"}
+    ]
 
 
 def test_handle_batched_rpc_call_which_need_multiprocessing(test_app: JsonRPC2):

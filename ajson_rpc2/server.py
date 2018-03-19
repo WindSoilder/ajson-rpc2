@@ -3,7 +3,6 @@ import json
 import logging
 import asyncio
 import functools
-import uvloop
 from asyncio import StreamReader, StreamWriter, Future, AbstractEventLoop
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
@@ -365,7 +364,9 @@ class JsonRPC2:
         result = _RequestGroup()
 
         for request in request_json:
-            if "method" not in request or request["method"] not in self.methods:
+            if isinstance(request, dict) is False or \
+               "method" not in request or \
+               request["method"] not in self.methods:
                 result.simple_requests.append(request)
             else:
                 rpc_method = self.get_rpc_method(request["method"])
