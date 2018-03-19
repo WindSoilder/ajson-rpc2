@@ -161,3 +161,5 @@ When client send batch request to server like this:
     [{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3},{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}]
 
 The subtract method will be called in the inner process pool executor, which can improve performance.
+
+Note that for the rpc call which need to be execute with multiprocess or multithread, we can add method to our json rpc2 server by using `@rpc_call` decorator, because decorated function is not **picklable**, which is required by the underlying module `multiprocessing`
