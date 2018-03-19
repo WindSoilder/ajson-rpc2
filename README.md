@@ -160,6 +160,21 @@ When client send batch request to server like this:
 
     [{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3},{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}]
 
+Here are run time tests (My test dev machine have 2-cores CPU, and 2GB memory) for the subtract rpc call:
+
+    data = {"jsonrpc": "2.0", "method": "subtract", "params": [1, 2], "id": "4"}
+    batch_data = [data] * 10
+
+1. have config `need_multiprocessing`
+    the rpc call takes about 24 seconds
+2. don't config `need_multiprocessing`
+    the rpc call takes about 46 seconds
+3. simply call the `subtract(1, 2)` with 10 times
+    takes about 45 seconds
+
+
+when the substract is config with `need_multiprocessing`, it takes about 24 seconds to complete the request.  Without `need_multiprocessing`, it takes about 46 seconds to complete the request.  My te
+
 The subtract method will be called in the inner process pool executor, which can improve performance.  The default max process in the server is 4, you can create your own *concurrent.futures.ProcessPoolExecutor* and transfer it to json rpc server, to make it can work with more processes.  this is an example:
 
     from concurrent.futures import ProcessPoolExecutor
