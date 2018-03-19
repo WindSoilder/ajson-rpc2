@@ -160,6 +160,11 @@ When client send batch request to server like this:
 
     [{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3},{"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}, {"jsonrpc": "2.0", "method": "subtract", "params": [2, 3], "id": 3}]
 
-The subtract method will be called in the inner process pool executor, which can improve performance.
+The subtract method will be called in the inner process pool executor, which can improve performance.  The default max process in the server is 4, you can create your own *concurrent.futures.ProcessPoolExecutor* and transfer it to json rpc server, to make it can work with more processes.  this is an example:
+
+    from concurrent.futures import ProcessPoolExecutor
+
+    executor = ProcessPoolExecutor(max_workers=10)
+    json_rpc = JsonRPC2(process_executor=executor)
 
 Note that for the rpc call which need to be execute with multiprocess or multithread, we can add method to our json rpc2 server by using `@rpc_call` decorator, because decorated function is not **picklable**, which is required by the underlying module `multiprocessing`
