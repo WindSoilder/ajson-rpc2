@@ -173,8 +173,6 @@ Here are run time tests (My test dev machine have 2-cores CPU, and 2GB memory) f
     takes about 45 seconds
 
 
-when the substract is config with `need_multiprocessing`, it takes about 24 seconds to complete the request.  Without `need_multiprocessing`, it takes about 46 seconds to complete the request.  My te
-
 The subtract method will be called in the inner process pool executor, which can improve performance.  The default max process in the server is 4, you can create your own *concurrent.futures.ProcessPoolExecutor* and transfer it to json rpc server, to make it can work with more processes.  this is an example:
 
     from concurrent.futures import ProcessPoolExecutor
@@ -182,4 +180,4 @@ The subtract method will be called in the inner process pool executor, which can
     executor = ProcessPoolExecutor(max_workers=10)
     json_rpc = JsonRPC2(process_executor=executor)
 
-Note that for the rpc call which need to be execute with multiprocess or multithread, we can add method to our json rpc2 server by using `@rpc_call` decorator, because decorated function is not **picklable**, which is required by the underlying module `multiprocessing`
+Note that for the rpc call which need to be execute with multiprocess or multithread, we **can not** add method to our json rpc2 server by using `@rpc_call` decorator, because decorated function is not **picklable**, which is required by the underlying module `multiprocessing`
