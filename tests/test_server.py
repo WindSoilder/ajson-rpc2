@@ -275,18 +275,52 @@ def test_handle_batched_rpc_call_which_need_multiprocessing(test_app: JsonRPC2):
     test_app.add_method(duplicate_add, need_multiprocessing=True)
     request_data = [
         {"id": 1, "method": "duplicate_add", "jsonrpc": "2.0"},
-        {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"}
+        {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"},
+        {"id": 4, "method": "add", "jsonrpc": "2.0"},
+        {"id": 5, "method": "duplicate_add", "jsonrpc": "2.0", "params": [1, 2]},
+        {"id": 6, "method": "add"}
     ]
 
+    resp_data_dict = {
+        1: {"result": 4},
+        2: {"result": 4},
+        4: {"error": {"code": -32601, "message": "Method not found"}},
+        5: {"error": {"code": -32602, "message": "Invalid params"}},
+        None: {"error": {"code": -32600, "message": "Invalid Request"}}
+    }
     responses = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call(request_data))
 
-    assert len(responses) == 2
-    response_dict = {
-        1: 4,
-        2: 4,
-    }
     for response in responses:
-        assert response.result == response_dict[response.resp_id]
+        if isinstance(response, SuccessResponse):
+            assert response.to_json()["result"] == resp_data_dict[response.resp_id]["result"]
+        else:
+            assert response.to_json()["error"] == resp_data_dict[response.resp_id]["error"]
+
+
+def test_handle_batched_rpc_call_which_need_multithreading(test_app: JsonRPC2):
+    test_app.add_method(duplicate_add, need_multithreading=True)
+    request_data = [
+        {"id": 1, "method": "duplicate_add", "jsonrpc": "2.0"},
+        {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"},
+        {"id": 4, "method": "add", "jsonrpc": "2.0"},
+        {"id": 5, "method": "duplicate_add", "jsonrpc": "2.0", "params": [1, 2]},
+        {"id": 6, "method": "add"}
+    ]
+
+    resp_data_dict = {
+        1: {"result": 4},
+        2: {"result": 4},
+        4: {"error": {"code": -32601, "message": "Method not found"}},
+        5: {"error": {"code": -32602, "message": "Invalid params"}},
+        None: {"error": {"code": -32600, "message": "Invalid Request"}}
+    }
+    responses = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call(request_data))
+
+    for response in responses:
+        if isinstance(response, SuccessResponse):
+            assert response.to_json()["result"] == resp_data_dict[response.resp_id]["result"]
+        else:
+            assert response.to_json()["error"] == resp_data_dict[response.resp_id]["error"]
 
 
 def test_handle_empty_batched(test_app: JsonRPC2):
@@ -413,7 +447,7 @@ def test_add_method_which_need_multiprocessing(test_app: JsonRPC2):
     assert 'add' in test_app.methods
     assert test_app.get_rpc_method('add').extra_need is ExtraNeed.PROCESS
 
-
+    
 def test_add_method_which_need_multithreading(test_app: JsonRPC2):
     def add(num1, num2):
         pass
