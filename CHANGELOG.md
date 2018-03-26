@@ -1,8 +1,11 @@
 ## [Unleased]
 - Add namespace support, so ajson-rpc2 can support for method like "document/open", "window/open", "foo.bar", "foo.bar2"
-- Add Support to define the behavior of rpc call, so we can make rpc called in another process
-- Provide document on how to extend the ajson-rpc2 protocol
 - Try to extend this json-rpc2 protocol to make it client friendly, (can support multiple line request)
+- Provide document on how to extend the ajson-rpc2 protocol
+
+## [v0.3] - 2018-03-26
+### Added
+- Add Support to define the behavior of rpc call, so we can make rpc called in another process
 
 ## [v0.2] - 2018-03-04
 ### Added
