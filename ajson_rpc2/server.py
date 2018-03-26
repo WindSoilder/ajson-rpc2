@@ -3,6 +3,7 @@ import json
 import logging
 import asyncio
 import functools
+import re
 from asyncio import StreamReader, StreamWriter, Future, AbstractEventLoop
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
@@ -19,7 +20,9 @@ from .models.errors import (
 from .models.request import Request, Notification
 from .models.response import SuccessResponse, ErrorResponse, _Response
 from .models.batch_response import BatchResponse
+from .module import Module
 from .method import RpcMethod, ExtraNeed
+from .container import _MethodContainer
 from .typedef import Union, Optional, Any, JSON, List, Callable
 
 
@@ -33,7 +36,7 @@ class _RequestGroup:
         self.thread_requests = thread or []
 
 
-class JsonRPC2:
+class JsonRPC2(_MethodContainer):
     '''
     Implementation of json-rpc2 protocol class
     Usage example::
@@ -75,6 +78,7 @@ class JsonRPC2:
                  loop: AbstractEventLoop = None,
                  process_executor: ProcessPoolExecutor = None,
                  thread_executor: ThreadPoolExecutor = None):
+        super(JsonRPC2, self).__init__()
         if loop is None:
             # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
             loop = asyncio.new_event_loop()
@@ -83,10 +87,10 @@ class JsonRPC2:
         if thread_executor is None:
             thread_executor = ThreadPoolExecutor(max_workers=4)
 
-        self.methods = {}
         self.loop = loop
         self.process_executor = process_executor
         self.thread_executor = thread_executor
+        self.modules = {}
 
     async def handle_client(self, reader: StreamReader, writer: StreamWriter):
         ''' main handler for each client connection '''
@@ -213,7 +217,7 @@ class JsonRPC2:
                             need_resource: bool = False) -> Any:
         ''' invoke a rpc-method according to request,
         assume that the request is always valid
-        which means that the request emthod exist, and argument is valid too '''
+        which means that the request method exist, and argument is valid too '''
         method = self.get_method(request.method)
         if need_resource:
             # when need resource, the method will be invoked
@@ -251,54 +255,26 @@ class JsonRPC2:
             return result
 
     def get_method(self, method_name: str) -> Callable:
-        ''' get and return actual rpc method,
+        ''' get and return actual rpc method, which may in the modules or in the server
         if the method is not existed, a ValueError will occured'''
-        try:
-            return self.methods[method_name].func
-        except KeyError as e:
-            raise ValueError(f'The method "{method_name}" is not registered in the Server')
+        method = self._get_method_in_module(method_name)
+        if method is None:
+            method = super(JsonRPC2, self).get_method(method_name)
+        return method
 
-    def get_rpc_method(self, method_name: str) -> RpcMethod:
-        ''' get and return the instance of RpcMethod
-        different to get_method, get_rpc_method will return RpcMethod instance '''
-        try:
-            return self.methods[method_name]
-        except KeyError as e:
-            raise ValueError(f'The method "{method_name}" is not registered in the Server')
-
-    def add_method(self, method,
-                   restrict=True,
-                   need_multiprocessing=False,
-                   need_multithreading=False):
-        ''' add method to json rpc, to make it rpc callable
-
-        :param method: which method to be rpc callable
-        :param restrict: controls the behavior when try to add method which have already
-                         been added, if restrict is True, an exception will be raise when
-                         user try to add an exist method.  Otherwise the method will be
-                         overrided
-        :param need_multiprocessing: if the value is True, then when we call the rpc method,
-                                     the method will execute in separate process, this argument
-                                     is useful for the high-CPU method
-        :param need_multithreading: if the value is True, when we call the rpc method,
-                                    the method will execute in separate thread, this argument
-                                    is useful for the IO-bound method.  When all need_multiprocessing
-                                    and need_multithreading are True, the method will be added as
-                                    need multiprocessing method
-        .. versionadded:: 0.3
-           The `need_multiprocessing`, `need_multithreading` parameters were added
-        '''
-        if need_multiprocessing:
-            extra_need = ExtraNeed.PROCESS
-        elif need_multithreading:
-            extra_need = ExtraNeed.THREAD
-        else:
-            extra_need = ExtraNeed.NOTHING
-
-        if restrict and method.__name__ in self.methods:
-            raise ValueError("The method is existed")
-        else:
-            self.methods[method.__name__] = RpcMethod(method, extra_need)
+    def _get_method_in_module(self, method_name: str) -> Callable:
+        if len(self.modules) == 0:
+            return None
+        splitters = ['.', '/']
+        module_level = 2
+        for splitter in splitters:
+            method_component = method_name.split(splitter)
+            if len(method_component) >= module_level:
+                return None
+            elif len(method_component) == module_level:
+                module_name, method_name = method_component
+                return self.modules[module_name].get_method(method_name)
+        return None
 
     def send_response(self, writer: StreamWriter,
                       response: Union[SuccessResponse, ErrorResponse, BatchResponse]):
@@ -331,28 +307,6 @@ class JsonRPC2:
             return InvalidParamsError("Invalid params")
         return None
 
-    def rpc_call(self, func):
-        '''
-        decorator function to make a function rpc_callable
-        Usage example::
-
-            # make one function to be rpc called
-            @server.rpc_call
-            def substract(num1, num2):
-                return num1 - num2
-
-            # also support for the async rpc call
-            @server.rpc_call
-            async def io_bound_call(num1):
-                await asyncio.sleep(3)
-                return num1
-        '''
-        @functools.wraps(func)
-        def wrapped(*args, **kwargs):
-            return func(*args, **kwargs)
-        self.add_method(func)
-        return wrapped
-
     def start(self, port: int = 8080):
         ''' start the server and listen to client '''
         server = asyncio.start_server(self.handle_client, port=port, loop=self.loop)
@@ -361,6 +315,14 @@ class JsonRPC2:
             self.loop.run_forever()
         finally:
             self.loop.close()
+
+    def register_module(self, module: Module):
+        ''' register module to rpc server
+
+        :param module: the module to add to json rpc2 server
+        .. versionadded:: 0.4
+        '''
+        self.modules[module.name] = module
 
     def _group_requests(self, request_json: list) -> _RequestGroup:
         result = _RequestGroup()

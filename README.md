@@ -53,9 +53,35 @@ Note that there is no standard client implementation, if you need a client sampl
 
 `MockJsonRPC2Client` can send python object(which can be parsed in json) to server.  But please note that it's just a client for testing.
 
+## Module support
+Actually, you can support method call like *document/open*, *window.write*, when you use module features.  Sample code is like his:
+```Python
+    from ajson_rpc2 import JsonRPC2, Module
+
+    document_module = Module('document')
+    window_module = Module('window')
+
+    @document_module.rpc_call
+    def open():
+        pass
+
+    @window_module.rpc_call
+    def write():
+        pass
+
+    app = JsonRPC2()
+    app.register_module(document_module)
+    app.register_module(window_module)
+
+    app.run()
+```
+
+Then you can pass method like this: `document/open`, `document.open`, `window.open`, `window/open`
+
 # Features
 1. Easy to use, support both async call and sync call
-2. Extensible for json-rpc based protocol (like language server protocol)
+2. Configuable for the rpc call, you can make it to be called with multi processing or multi threading
+3. Extensible for json-rpc based protocol (like language server protocol)
 
 # Limited
 For now the client can only send one-line request to the server, like this:
