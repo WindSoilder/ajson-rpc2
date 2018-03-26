@@ -165,7 +165,6 @@ class JsonRPC2:
         request_group = self._group_requests(request_json)
 
         # process requests
-        response_futures = []
         thread_responses = self._handle_thread_requests(request_group.thread_requests)
 
         # In ProcessPoolExecutor, we can only submit pickle object,
@@ -174,20 +173,24 @@ class JsonRPC2:
         # and it's more complicate than ThreadPoolExecutor
         [process_responses, process_errors] = self._handle_process_requests(request_group.process_requests)
 
-        # wait for multi-process and multi-thread methods complete
-        response_futures.extend(process_responses)
-        response_futures.extend(thread_responses)
-
         # add errors to batch responses
         for process_error in process_errors:
             batch_response.append(process_error)
 
-        if len(response_futures) > 0:
-            rpc_call_results = await asyncio.wait(response_futures)
+        # wait for multi-processing response
+        if len(process_responses) > 0:
+            rpc_call_results = await asyncio.wait(process_responses)
             rpc_call_responses = self._convert_to_response(rpc_call_results)
 
             for result in rpc_call_responses:
                 batch_response.append(result)
+
+        # wait for multi-threading response
+        if len(thread_responses) > 0:
+            rpc_call_responses = await asyncio.wait(thread_responses)
+
+            for result in rpc_call_responses[0]:
+                batch_response.append(result.result())
 
         # handle for rpc method which doesn't have special need resource
         # it can be asynchronous function
@@ -218,8 +221,7 @@ class JsonRPC2:
             # object
             if isinstance(request.params, dict):
                 result_future = self.loop.run_in_executor(self.process_executor,
-                                                          method,
-                                                          **request.params)
+                                                          functools.partial(method, **request.params))
             elif isinstance(request.params, list):
                 result_future = self.loop.run_in_executor(self.process_executor,
                                                           method,

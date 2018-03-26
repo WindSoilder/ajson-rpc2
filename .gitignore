@@ -2,4 +2,6 @@
 *pyc
 *pyo
 *cache
-.coverage
+
+# omit for python coverage log file
+.coverage*

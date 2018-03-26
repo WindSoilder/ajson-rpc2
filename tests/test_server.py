@@ -22,6 +22,14 @@ def duplicate_add():
     return 4
 
 
+def substract_for_multiprocessing(num1, num2):
+    return num1 - num2
+
+
+def have_exception_call():
+    1 / 0
+
+
 async def read_request():
     global mock_queue
     return mock_queue.get()
@@ -271,56 +279,29 @@ def test_handle_batched_rpc_call_with_an_invalid_batch(test_app: JsonRPC2):
     ]
 
 
-def test_handle_batched_rpc_call_which_need_multiprocessing(test_app: JsonRPC2):
-    test_app.add_method(duplicate_add, need_multiprocessing=True)
+def test_handle_batched_rpc_call_which_need_multiprocessing_with_no_parameters(test_app: JsonRPC2):
+    _test_for_special_need_rpc_call(test_app, "multiprocessing")
+
+
+def test_handle_batched_rpc_call_which_need_multiprocessing_with_parameters(test_app: JsonRPC2):
+    test_app.add_method(substract_for_multiprocessing, need_multiprocessing=True)
     request_data = [
-        {"id": 1, "method": "duplicate_add", "jsonrpc": "2.0"},
-        {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"},
-        {"id": 4, "method": "add", "jsonrpc": "2.0"},
-        {"id": 5, "method": "duplicate_add", "jsonrpc": "2.0", "params": [1, 2]},
-        {"id": 6, "method": "add"}
+        {"id": 1, "method": "substract_for_multiprocessing", "jsonrpc": "2.0", "params": [1, 2]},
+        {"id": 2, "method": "substract_for_multiprocessing", "jsonrpc": "2.0", "params": {"num1": 3, "num2": 5}},
     ]
 
     resp_data_dict = {
-        1: {"result": 4},
-        2: {"result": 4},
-        4: {"error": {"code": -32601, "message": "Method not found"}},
-        5: {"error": {"code": -32602, "message": "Invalid params"}},
-        None: {"error": {"code": -32600, "message": "Invalid Request"}}
+        1: {"result": -1},
+        2: {"result": -2},
     }
     responses = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call(request_data))
 
     for response in responses:
-        if isinstance(response, SuccessResponse):
-            assert response.to_json()["result"] == resp_data_dict[response.resp_id]["result"]
-        else:
-            assert response.to_json()["error"] == resp_data_dict[response.resp_id]["error"]
+        assert response.to_json()["result"] == resp_data_dict[response.resp_id]["result"]
 
 
 def test_handle_batched_rpc_call_which_need_multithreading(test_app: JsonRPC2):
-    test_app.add_method(duplicate_add, need_multithreading=True)
-    request_data = [
-        {"id": 1, "method": "duplicate_add", "jsonrpc": "2.0"},
-        {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"},
-        {"id": 4, "method": "add", "jsonrpc": "2.0"},
-        {"id": 5, "method": "duplicate_add", "jsonrpc": "2.0", "params": [1, 2]},
-        {"id": 6, "method": "add"}
-    ]
-
-    resp_data_dict = {
-        1: {"result": 4},
-        2: {"result": 4},
-        4: {"error": {"code": -32601, "message": "Method not found"}},
-        5: {"error": {"code": -32602, "message": "Invalid params"}},
-        None: {"error": {"code": -32600, "message": "Invalid Request"}}
-    }
-    responses = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call(request_data))
-
-    for response in responses:
-        if isinstance(response, SuccessResponse):
-            assert response.to_json()["result"] == resp_data_dict[response.resp_id]["result"]
-        else:
-            assert response.to_json()["error"] == resp_data_dict[response.resp_id]["error"]
+    _test_for_special_need_rpc_call(test_app, "multithreading")
 
 
 def test_handle_empty_batched(test_app: JsonRPC2):
@@ -417,6 +398,19 @@ def test_get_not_existed_method(test_app: JsonRPC2):
         test_app.get_method("test")
 
 
+def test_get_rpc_method(test_app: JsonRPC2):
+    def add(num1):
+        pass
+    test_app.add_method(add)
+
+    assert test_app.get_rpc_method('add').func is add
+
+
+def test_get_not_existed_rpc_method(test_app: JsonRPC2):
+    with pytest.raises(ValueError):
+        test_app.get_rpc_method('abc')
+
+
 def test_add_method(test_app: JsonRPC2):
     def add(num1, num2):
         pass
@@ -447,7 +441,7 @@ def test_add_method_which_need_multiprocessing(test_app: JsonRPC2):
     assert 'add' in test_app.methods
     assert test_app.get_rpc_method('add').extra_need is ExtraNeed.PROCESS
 
-    
+
 def test_add_method_which_need_multithreading(test_app: JsonRPC2):
     def add(num1, num2):
         pass
@@ -586,3 +580,36 @@ def test_start():
         mock_loop.run_until_complete.assert_called_with(1)
         mock_loop.run_forever.assert_called_with()
         mock_loop.close.assert_called_with()
+
+
+def _test_for_special_need_rpc_call(test_app: JsonRPC2, special_need: str):
+    if special_need == "multiprocessing":
+        test_app.add_method(duplicate_add, need_multiprocessing=True)
+        test_app.add_method(have_exception_call, need_multiprocessing=True)
+    elif special_need == "multithreading":
+        test_app.add_method(duplicate_add, need_multithreading=True)
+        test_app.add_method(have_exception_call, need_multithreading=True)
+    request_data = [
+        {"id": 1, "method": "duplicate_add", "jsonrpc": "2.0"},
+        {"id": 2, "method": "duplicate_add", "jsonrpc": "2.0"},
+        {"id": 4, "method": "add", "jsonrpc": "2.0"},
+        {"id": 5, "method": "duplicate_add", "jsonrpc": "2.0", "params": [1, 2]},
+        {"id": 6, "method": "add"},
+        {"id": 7, "method": "have_exception_call", "jsonrpc": "2.0"}
+    ]
+
+    resp_data_dict = {
+        1: {"result": 4},
+        2: {"result": 4},
+        4: {"error": {"code": -32601, "message": "Method not found"}},
+        5: {"error": {"code": -32602, "message": "Invalid params"}},
+        None: {"error": {"code": -32600, "message": "Invalid Request"}},
+        7: {"error": {"code": -32603, "message": "Internal error"}}
+    }
+    responses = test_app.loop.run_until_complete(test_app.handle_batched_rpc_call(request_data))
+
+    for response in responses:
+        if isinstance(response, SuccessResponse):
+            assert response.to_json()["result"] == resp_data_dict[response.resp_id]["result"]
+        else:
+            assert response.to_json()["error"] == resp_data_dict[response.resp_id]["error"]
