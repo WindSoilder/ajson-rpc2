@@ -46,11 +46,6 @@ def empty_queue():
 
 
 @pytest.fixture
-def test_app():
-    return JsonRPC2()
-
-
-@pytest.fixture
 def reader():
     mock_reader = Mock()
     mock_reader.readline.side_effect = read_request
