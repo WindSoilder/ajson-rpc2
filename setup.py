@@ -1,5 +1,25 @@
 from setuptools import setup
+import os
 import ajson_rpc2
+
+
+def read(*names):
+    values = dict()
+    extensions = ['.txt', '.md']
+    for name in names:
+        value = ''
+        for extension in extensions:
+            filename = name + extension
+            if os.path.isfile(filename):
+                value = open(name + extension).read()
+                break
+        values[name] = value
+    return values
+
+
+long_description = '''
+%(README)s
+''' % read('README')
 
 
 setup(
@@ -12,7 +32,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Topic :: Documentation",
     ],
-    keywords='howdoi help console command line answer',
+    keywords=["rpc", "json", "server"],
     author='WindSoilder',
     author_email='WindSoilder@outlook.com',
     maintainer='WindSoilder',

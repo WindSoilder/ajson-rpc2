@@ -1,6 +1,9 @@
 ## [Unleased]
 - Provide document on how to extend the ajson-rpc2 protocol
 
+## [v0.5] - 2018-03-29
+- Add pip install support, the package is publish on pip now :)
+
 ## [v0.4] - 2018-03-29
 - Introduce Module feature, so ajson-rpc2 can support for method like "document/open", "window/open", "foo.bar", "foo.bar2"
 
