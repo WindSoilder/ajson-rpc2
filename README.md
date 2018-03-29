@@ -54,7 +54,7 @@ Note that there is no standard client implementation, if you need a client sampl
 `MockJsonRPC2Client` can send python object(which can be parsed in json) to server.  But please note that it's just a client for testing.
 
 ## Module support
-Actually, you can support method call like *document/open*, *window.write*, when you use module features.  Sample code is like his:
+Actually, you can support method call like *document/open*, *window.write*, when you use module features.  Sample code is like this:
 ```Python
     from ajson_rpc2 import JsonRPC2, Module
 
