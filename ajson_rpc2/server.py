@@ -269,7 +269,7 @@ class JsonRPC2(_MethodContainer):
         module_level = 2
         for splitter in splitters:
             method_component = method_name.split(splitter)
-            if len(method_component) >= module_level:
+            if len(method_component) > module_level:
                 return None
             elif len(method_component) == module_level:
                 module_name, method_name = method_component

@@ -10,7 +10,6 @@ import logging
 import accept_test_cases
 from multiprocessing import Process
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from ajson_rpc2 import JsonRPC2
 
 
